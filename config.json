@@ -1,0 +1,28 @@
+{
+  "teclas": {
+    "cima": 119,
+    "baixo": 115,
+    "esquerda": 97,
+    "direita": 100,
+    "interagir": 101,
+    "plantar": 112,
+    "colher": 99,
+    "pescar": 102,
+    "cortar": 120,
+    "ciclar": 9,
+    "inventario": 105
+  },
+  "volumes": {
+    "animais": 0.8,
+    "plantas": 0.6,
+    "pesca": 0.8,
+    "interface": 0.7,
+    "musica": 0.5,
+    "animals": 0.75,
+    "plants": 0.6,
+    "fishing": 0.8,
+    "ui": 0.7,
+    "music": 0.5
+  },
+  "tela_cheia": true
+}

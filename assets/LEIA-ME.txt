@@ -1,0 +1,33 @@
+ASSETS DO FARM GAME
+===================
+
+Coloque seus arquivos PNG/WAV nas pastas abaixo.
+Enquanto nao existir arquivo, o jogo usa um placeholder colorido.
+
+images/jogador/
+  jogador_m_cima.png  jogador_m_baixo.png  jogador_m_esq.png  jogador_m_dir.png
+  jogador_f_cima.png  jogador_f_baixo.png  jogador_f_esq.png  jogador_f_dir.png
+  Tamanho sugerido: 32x48 px
+
+images/tiles/
+  grama.png  solo.png  semente.png  semente_esp.png
+  muda.png  arvore.png  agua.png  pier.png
+  Tamanho: 40x40 px
+
+images/predios/
+  casa.png  estabulo_quebrado.png  estabulo_fixo.png
+  galinheiro_quebrado.png  galinheiro_fixo.png
+
+images/npcs/
+  fazendeiro.png  pescador.png  vendedor.png  construtor.png
+
+images/animais/
+  vaca.png  galinha.png  Tamanho: 32x32 px
+
+images/ui/
+  nota_esq.png  nota_baixo.png  nota_cima.png  nota_dir.png  Tamanho: 50x50 px
+
+sounds/animais/   vaca.wav  galinha.wav
+sounds/plantas/   plantar.wav  colher.wav  cortar.wav
+sounds/pesca/     splash.wav  acerto.wav  erro.wav  capturou.wav
+sounds/interface/ clique.wav  vender.wav
