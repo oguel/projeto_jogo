@@ -150,7 +150,7 @@ PADROES_PESCA_PADRAO = {
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 RET_CASA        = (0, 0, 4, 3)   # Casa:       cols 0-3,  linhas 0-2
 RET_ESTABULO    = (0, 7, 4, 4)   # Estábulo:   cols 0-3,  linhas 7-10
-RET_GALINHEIRO  = (5, 0, 3, 3)   # Galinheiro: cols 5-7,  linhas 0-2
+RET_GALINHEIRO  = (6, 0, 3, 3)   # Galinheiro: cols 6-8,  linhas 0-2 (espaço de 2 cols da casa)
 
 # Lago e pier de pesca
 COLS_LAGO    = range(12, 20)

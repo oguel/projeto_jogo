@@ -481,6 +481,18 @@ class EstadoFazenda(EstadoBase):
             tip_c   = fonte_p.render(f'[{pygame.key.name(tecla_i).upper()}] Dormir 🛏️', True, (255, 230, 140))
             tela.blit(tip_c, (RET_CAMA.x - 8, RET_CAMA.y - 20))
 
+        # Dica de prédios quebrados: lembrar de ir à cidade consertar
+        estab_quebrado = self.gd.predios.get(ESTABULO_QUEBRADO) == ESTABULO_QUEBRADO
+        gal_quebrado   = self.gd.predios.get(GALINHEIRO_QUEBRADO) == GALINHEIRO_QUEBRADO
+        if estab_quebrado and RET_PX_ESTABULO.inflate(60, 60).colliderect(self.jog.obter_ret()):
+            tip_q = fonte_p.render('→ Cidade: conserte o Estábulo com o Construtor!', True, (255, 195, 80))
+            tela.blit(tip_q, (RET_PX_ESTABULO.centerx - tip_q.get_width() // 2,
+                               RET_PX_ESTABULO.bottom + 6))
+        elif gal_quebrado and RET_PX_GALINHEIRO.inflate(60, 60).colliderect(self.jog.obter_ret()):
+            tip_q = fonte_p.render('→ Cidade: conserte o Galinheiro com o Construtor!', True, (255, 195, 80))
+            tela.blit(tip_q, (RET_PX_GALINHEIRO.centerx - tip_q.get_width() // 2,
+                               RET_PX_GALINHEIRO.bottom + 6))
+
         # Seta → Cidade
         arr = fonte_p.render('→ Cidade', True, (255, 245, 200))
         pygame.draw.rect(tela, (25, 20, 10),
@@ -492,7 +504,7 @@ class EstadoFazenda(EstadoBase):
         tela.blit(arr, (largura - arr.get_width() - 10, altura//2 - 8))
 
         # ── HUD ──────────────────────────────────────────────────
-        self.inv.desenhar_hud(tela, fonte_p)
+        self.inv.desenhar_hud(tela, fonte_p, fonte_normal=fonte_n, dia=self.hor.dia)
         self._desenhar_relogio(tela, largura, fonte_n)
 
         # Dica de inventário

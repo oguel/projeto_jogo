@@ -260,7 +260,7 @@ class EstadoCidade(EstadoBase):
         self.jog.desenhar(tela)
 
         # HUD
-        self.inv.desenhar_hud(tela, fonte_p)
+        self.inv.desenhar_hud(tela, fonte_p, fonte_normal=fonte_n, dia=self.hor.dia)
         self._desenhar_relogio(tela, largura, fonte_n)
 
         # Seta ← Fazenda

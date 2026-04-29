@@ -128,8 +128,10 @@ class Inventario:
         self.dinheiro += total
         return total
 
-    def desenhar_hud(self, tela: pygame.Surface, fonte_pequena):
+    def desenhar_hud(self, tela: pygame.Surface, fonte_pequena, fonte_normal=None, dia: int = 1):
         """Desenha o HUD de dinheiro e semente ativa no canto esquerdo."""
+        fonte_n = fonte_normal or fonte_pequena
+
         # Painel de dinheiro
         txt_din  = fonte_pequena.render(f'💰 ${self.dinheiro}', True, (255, 230, 80))
         box_din  = pygame.Surface((txt_din.get_width() + 12, 24), pygame.SRCALPHA)
@@ -138,25 +140,41 @@ class Inventario:
         tela.blit(box_din,  (4, 4))
         tela.blit(txt_din,  (10, 7))
 
+        # Dia
+        txt_dia  = fonte_pequena.render(f'📅 Dia {dia}', True, (200, 220, 255))
+        box_dia  = pygame.Surface((txt_dia.get_width() + 12, 24), pygame.SRCALPHA)
+        box_dia.fill((18, 14, 4, 195))
+        pygame.draw.rect(box_dia, (80, 100, 160), box_dia.get_rect(), 1, border_radius=5)
+        tela.blit(box_dia,  (4, 32))
+        tela.blit(txt_dia,  (10, 35))
+
         # Painel de madeira
         txt_mad  = fonte_pequena.render(f'🪵 {self.madeira}', True, (200, 170, 110))
         box_mad  = pygame.Surface((txt_mad.get_width() + 12, 24), pygame.SRCALPHA)
         box_mad.fill((18, 14, 4, 195))
         pygame.draw.rect(box_mad, (120, 90, 40), box_mad.get_rect(), 1, border_radius=5)
-        tela.blit(box_mad,  (4, 32))
-        tela.blit(txt_mad,  (10, 35))
+        tela.blit(box_mad,  (4, 60))
+        tela.blit(txt_mad,  (10, 63))
 
-        # Semente ativa (canto inferior esquerdo)
+        # Semente ativa — canto inferior esquerdo (maior e mais destacada)
+        _COR_BORDA_SEMENTE = {
+            ID_SEMENTE:     (60, 200, 60),
+            ID_SEMENTE_ESP: (180, 60, 220),
+            ID_MUDA:        (50, 170, 90),
+        }
         nome_sem = self._NOME_SEMENTE.get(self.semente_ativa, '?')
         qtd_sem  = self.quantidade(self.semente_ativa)
-        txt_sem  = fonte_pequena.render(f'🌱 {nome_sem}: {qtd_sem}', True,
-                                         (180, 255, 140) if qtd_sem > 0 else (160, 100, 100))
+        cor_sem  = (180, 255, 140) if qtd_sem > 0 else (160, 100, 100)
+        txt_sem  = fonte_n.render(f'🌱 {nome_sem}  x{qtd_sem}', True, cor_sem)
         alt_tela = tela.get_height()
-        box2     = pygame.Surface((txt_sem.get_width() + 12, 24), pygame.SRCALPHA)
-        box2.fill((4, 22, 4, 195))
-        pygame.draw.rect(box2, (60, 130, 60), box2.get_rect(), 1, border_radius=5)
-        tela.blit(box2,    (4, alt_tela - 30))
-        tela.blit(txt_sem, (10, alt_tela - 27))
+        larg_box  = txt_sem.get_width() + 18
+        alt_box   = 30
+        box2     = pygame.Surface((larg_box, alt_box), pygame.SRCALPHA)
+        box2.fill((4, 22, 4, 210))
+        cor_borda = _COR_BORDA_SEMENTE.get(self.semente_ativa, (60, 130, 60))
+        pygame.draw.rect(box2, cor_borda, box2.get_rect(), 2, border_radius=7)
+        tela.blit(box2,    (4, alt_tela - alt_box - 6))
+        tela.blit(txt_sem, (13, alt_tela - alt_box - 1))
 
     def desenhar_painel(self, tela: pygame.Surface, fontes: dict, tem_vara: bool):
         """Desenha o painel completo de inventário (tecla I)."""

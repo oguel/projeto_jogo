@@ -12,6 +12,7 @@ from src.constants import (
     ID_SEMENTE, ID_SEMENTE_ESP, ID_MUDA,
     ID_PEIXE_COMUM, ID_PEIXE_DOURADO, ID_PEIXE_RARO,
     ID_COLHEITA, ID_COLHEITA_ESP, ID_MADEIRA,
+    RET_ESTABULO, RET_GALINHEIRO,
 )
 from src import assets as RECURSOS
 
@@ -457,12 +458,21 @@ class NPCConstrutor(NPCBase):
 # Animais — movimentação dentro dos prédios
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-# Área de movimentação de cada tipo de animal (dentro do prédio)
-# Galinheiro: x:200-320, y:0-120 (porta no sul, y=120)
-# Estábulo:   x:0-160,   y:280-440 (porta no sul, y=440)
+# Área de movimentação de cada tipo de animal calculada dinamicamente
+# com base nas posições reais dos prédios em pixels.
+def _calc_area_animal(ret_tiles: tuple, margem: int = 6) -> pygame.Rect:
+    """Converte um ret de tiles (col, lin, larg, alt) para pixels com margem interna."""
+    col, lin, larg, alt = ret_tiles
+    px = col * TAM_TILE + margem
+    py = lin * TAM_TILE + margem
+    pw = larg * TAM_TILE - margem * 2
+    ph = alt  * TAM_TILE - margem * 2
+    return pygame.Rect(px, py, pw, ph)
+
+
 AREA_POR_TIPO = {
-    'galinha': pygame.Rect(204, 4,   112, 138),   # dentro do galinheiro + 18px além da porta
-    'vaca':    pygame.Rect(4,   284, 152, 174),   # dentro do estábulo + 18px além da porta
+    'galinha': _calc_area_animal(RET_GALINHEIRO),
+    'vaca':    _calc_area_animal(RET_ESTABULO),
 }
 
 TAMANHO_ANIMAL = 20   # tamanho de desenho do animal em pixels
