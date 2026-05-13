@@ -1,0 +1,7 @@
+﻿OK: src/farm_state.py
+OK: src/town_state.py
+OK: src/entities.py
+OK: src/states.py
+OK: src/game_data.py
+
+Todos os emojis de codigo removidos!

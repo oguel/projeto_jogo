@@ -1,15 +1,3 @@
-"""
-fazenda_estado.py / farm_state.py — Estado da Fazenda (jogador único).
-
-Funcionalidades:
-  • Casa com cama para dormir (E perto da cama = novo dia)
-  • Estábulo  — prédio rústico escuro, animais visíveis apenas dentro
-  • Galinheiro — madeira clara, cerca na frente, animais visíveis apenas dentro
-  • Plantio, colheita, corte de árvores, pesca no pier
-  • HUD: dinheiro, madeira, semente ativa, relógio
-  • Inventário completo (tecla I)
-  • Cheat de debug: F12 = +$200 e +50 madeiras
-"""
 import pygame
 import math
 import random
@@ -21,10 +9,9 @@ from src.constants import (
     MUDA, ARVORE, AGUA, PIER,
     ID_SEMENTE, ID_SEMENTE_ESP, ID_MUDA,
     ID_COLHEITA, ID_COLHEITA_ESP, ID_MADEIRA,
-    PRECOS_VENDA,
     COLS_LAGO, LINHAS_LAGO, COLS_PIER, LINHAS_PIER, COL_PESCAR,
     RET_CASA, RET_ESTABULO, RET_GALINHEIRO,
-    COR_GRAMA, COR_SOLO, COR_PLANTADO, COR_ESP, COR_MUDA, COR_ARVORE, COR_AGUA, COR_PIER,
+    COR_PIER,
     TEMPO_SEMENTE, TEMPO_ESPECIAL, TEMPO_MUDA,
     ESTABULO_QUEBRADO, ESTABULO_FIXO, GALINHEIRO_QUEBRADO, GALINHEIRO_FIXO,
     SPAWN_X, SPAWN_Y,
@@ -85,7 +72,22 @@ def _criar_paredes(ret, larg_porta):
     ]
 
 
-PAREDES_CASA       = _criar_paredes(RET_PX_CASA,       40)
+def _criar_paredes_casa():
+    r  = RET_PX_CASA
+    x, y, w, h = r.x, r.y, r.width, r.height
+    larg_porta = 40
+    esq_porta  = x + 68 - larg_porta // 2   # porta ~68px da esquerda no sprite
+    dir_porta  = esq_porta + larg_porta
+    return [
+        pygame.Rect(x,         y,     w,             4),
+        pygame.Rect(x,         y,     4,             h),
+        pygame.Rect(x+w-4,     y,     4,             h),
+        pygame.Rect(x,         y+h-4, esq_porta - x, 4),
+        pygame.Rect(dir_porta, y+h-4, x+w-dir_porta, 4),
+    ]
+
+
+PAREDES_CASA       = _criar_paredes_casa()
 PAREDES_ESTABULO   = _criar_paredes(RET_PX_ESTABULO,   56)
 PAREDES_GALINHEIRO = _criar_paredes(RET_PX_GALINHEIRO, 36)
 
@@ -173,7 +175,7 @@ class EstadoFazenda(EstadoBase):
             if tecla == pygame.K_F12:
                 self.inv.dinheiro += 200
                 self.inv.madeira  += 50
-                self._msg_venda = '💜 Debug: +$200 e +50 madeiras!'
+                self._msg_venda = 'Debug: +$200 e +50 madeiras'
                 self._timer_msg = pygame.time.get_ticks()
                 continue
 
@@ -393,49 +395,77 @@ class EstadoFazenda(EstadoBase):
                 tile   = self.mapa[lin][col]
 
                 if pos in TILES_PESCA or pos in TILES_PIER:
-                    # Deck de madeira
+                    # Fundo de madeira
                     pygame.draw.rect(tela, COR_PIER, (rx, ry, TAM_TILE, TAM_TILE))
-                    for bx in range(rx + 4, rx + TAM_TILE, 8):
-                        pygame.draw.line(tela, (100, 65, 28), (bx, ry), (bx, ry + TAM_TILE), 2)
+                    # Bridge_Wood original 38x30 — mantém proporção, centraliza no tile
+                    bw, bh = 38, 30
+                    sx = rx + (TAM_TILE - bw) // 2
+                    sy = ry + (TAM_TILE - bh) // 2
+                    tela.blit(RECURSOS.obter_imagem('tile_pier', (bw, bh)), (sx, sy))
                     if pos in TILES_PESCA:
                         pygame.draw.circle(tela, (80, 200, 255),
                                            (rx + TAM_TILE // 2, ry + TAM_TILE // 2), 6)
+
                 elif pos in TILES_LAGO:
-                    # Água animada
+                    # Água: sprite base animado por deslocamento de cor
                     onda  = math.sin(self._tick_agua * 0.05 + col * 0.5 + lin * 0.3)
                     nv    = int(onda * 10)
-                    cor   = (max(0, 30+nv), max(0, 90+nv), min(255, 200+nv//2))
-                    pygame.draw.rect(tela, cor, (rx, ry, TAM_TILE, TAM_TILE))
-                    if (col + lin + self._tick_agua // 20) % 3 == 0:
-                        pygame.draw.line(tela, (160, 220, 255),
-                                         (rx+4, ry+TAM_TILE//2), (rx+TAM_TILE-4, ry+TAM_TILE//2), 1)
+                    surf_agua = RECURSOS.obter_imagem('tile_agua', (TAM_TILE, TAM_TILE)).copy()
+                    if nv != 0:
+                        tint = pygame.Surface((TAM_TILE, TAM_TILE), pygame.SRCALPHA)
+                        v    = max(0, min(30, nv + 15))
+                        tint.fill((0, v, v, 0))
+                        surf_agua.blit(tint, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+                    tela.blit(surf_agua, (rx, ry))
+
+                    # Bordas de transição
+                    acima  = (col, lin-1)
+                    abaixo = (col, lin+1)
+                    esq    = (col-1, lin)
+                    dir_   = (col+1, lin)
+                    if acima  not in TILES_LAGO: tela.blit(RECURSOS.obter_imagem('agua_borda_cima',  (TAM_TILE, TAM_TILE)), (rx, ry))
+                    if abaixo not in TILES_LAGO: tela.blit(RECURSOS.obter_imagem('agua_borda_baixo', (TAM_TILE, TAM_TILE)), (rx, ry))
+                    if esq    not in TILES_LAGO: tela.blit(RECURSOS.obter_imagem('agua_borda_esq',   (TAM_TILE, TAM_TILE)), (rx, ry))
+                    if dir_   not in TILES_LAGO: tela.blit(RECURSOS.obter_imagem('agua_borda_dir',   (TAM_TILE, TAM_TILE)), (rx, ry))
+
                 else:
-                    # Tile de terreno
-                    mapa_cor = {
-                        GRAMA:      COR_GRAMA,
-                        SOLO:       COR_SOLO,
-                        SEMENTE:    COR_PLANTADO,
-                        SEMENTE_ESP: COR_ESP,
-                        MUDA:       COR_MUDA,
-                        ARVORE:     COR_ARVORE,
-                    }
-                    pygame.draw.rect(tela, mapa_cor.get(tile, COR_GRAMA),
-                                     (rx, ry, TAM_TILE, TAM_TILE))
-                    # Detalhes visuais
-                    if tile == GRAMA and (col + lin) % 6 == 0:
-                        pygame.draw.line(tela, (45, 165, 45),
-                                         (rx+10, ry+TAM_TILE-4), (rx+14, ry+TAM_TILE-14), 1)
-                    if tile == ARVORE:
-                        pygame.draw.circle(tela, (20, 105, 20),
-                                           (rx + TAM_TILE//2, ry + 8), 15)
-                    if tile in (SEMENTE, SEMENTE_ESP, MUDA):
-                        tempo_max = {SEMENTE: TEMPO_SEMENTE, SEMENTE_ESP: TEMPO_ESPECIAL,
-                                     MUDA: TEMPO_MUDA}[tile]
-                        pct = min(1.0, (agora - self.tp.get(pos, agora)) / tempo_max)
+                    # ── Grama base para tudo ──
+                    tela.blit(RECURSOS.obter_imagem('tile_grama', (TAM_TILE, TAM_TILE)), (rx, ry))
+
+                    if tile == SOLO:
+                        tela.blit(RECURSOS.obter_imagem('tile_solo', (TAM_TILE, TAM_TILE)), (rx, ry))
+
+                    elif tile == SEMENTE:
+                        tela.blit(RECURSOS.obter_imagem('tile_solo',    (TAM_TILE, TAM_TILE)), (rx, ry))
+                        # Sprite de planta centralizado sobre o tile
+                        sp  = RECURSOS.obter_imagem('tile_semente', (TAM_TILE - 8, TAM_TILE - 8))
+                        tela.blit(sp, (rx + 4, ry + 4))
+                        # Barra de progresso
+                        pct = min(1.0, (agora - self.tp.get(pos, agora)) / TEMPO_SEMENTE)
                         pygame.draw.rect(tela, (40, 200, 40),
                                          (rx, ry + TAM_TILE - 5, int(TAM_TILE * pct), 4))
 
-                pygame.draw.rect(tela, (0, 0, 0, 18), (rx, ry, TAM_TILE, TAM_TILE), 1)
+                    elif tile == SEMENTE_ESP:
+                        tela.blit(RECURSOS.obter_imagem('tile_solo',        (TAM_TILE, TAM_TILE)), (rx, ry))
+                        sp  = RECURSOS.obter_imagem('tile_semente_esp', (TAM_TILE - 8, TAM_TILE - 8))
+                        tela.blit(sp, (rx + 4, ry + 4))
+                        pct = min(1.0, (agora - self.tp.get(pos, agora)) / TEMPO_ESPECIAL)
+                        pygame.draw.rect(tela, (200, 80, 220),
+                                         (rx, ry + TAM_TILE - 5, int(TAM_TILE * pct), 4))
+
+                    elif tile == MUDA:
+                        # Muda pequena sobre grama
+                        sp  = RECURSOS.obter_imagem('tile_muda', (TAM_TILE - 14, TAM_TILE - 6))
+                        tela.blit(sp, (rx + 7, ry + 3))
+                        pct = min(1.0, (agora - self.tp.get(pos, agora)) / TEMPO_MUDA)
+                        pygame.draw.rect(tela, (80, 200, 80),
+                                         (rx, ry + TAM_TILE - 5, int(TAM_TILE * pct), 4))
+
+                    elif tile == ARVORE:
+                        # Árvore ocupa o tile inteiro (sprite maior, centralizado)
+                        sw, sh = TAM_TILE + 4, TAM_TILE + 10
+                        sp = RECURSOS.obter_imagem('tile_arvore', (sw, sh))
+                        tela.blit(sp, (rx - 2, ry - 10))
 
         # ── Prédios ──────────────────────────────────────────────
         self._desenhar_casa(tela, fonte_p)
@@ -478,7 +508,7 @@ class EstadoFazenda(EstadoBase):
         # Dica de cama
         if self._perto_da_cama():
             tecla_i = self.cfg.teclas.get('interagir', pygame.K_e)
-            tip_c   = fonte_p.render(f'[{pygame.key.name(tecla_i).upper()}] Dormir 🛏️', True, (255, 230, 140))
+            tip_c   = fonte_p.render(f'[{pygame.key.name(tecla_i).upper()}] Dormir', True, (255, 230, 140))
             tela.blit(tip_c, (RET_CAMA.x - 8, RET_CAMA.y - 20))
 
         # Dica de prédios quebrados: lembrar de ir à cidade consertar
@@ -520,7 +550,7 @@ class EstadoFazenda(EstadoBase):
         # Resultado de pesca
         if self.gd.ultimo_resultado:
             cor_res = (80, 255, 130) if self.gd.ultimo_resultado == 'capturado' else (255, 80, 80)
-            txt_res = '🐟 Peixe capturado!' if self.gd.ultimo_resultado == 'capturado' else '💨 Peixe escapou...'
+            txt_res = 'Peixe capturado!' if self.gd.ultimo_resultado == 'capturado' else 'Peixe escapou...'
             fs  = fonte_n.render(txt_res, True, cor_res)
             tela.blit(fs, (largura // 2 - fs.get_width() // 2, 80))
             if not hasattr(self, '_timer_resultado_pesca'):
@@ -552,7 +582,7 @@ class EstadoFazenda(EstadoBase):
         hora_str, hora, _ = self.hor.hora_atual()
         noite = hora >= 20
         cor_t = (255, 200, 100) if noite else (255, 255, 220)
-        tc    = fonte.render(f'🕐 {hora_str}', True, cor_t)
+        tc    = fonte.render(hora_str, True, cor_t)
         larg  = tc.get_width() + 16
         bx    = largura - larg - 4
         pygame.draw.rect(tela, (12, 8, 28) if noite else (18, 18, 45),
@@ -583,63 +613,16 @@ class EstadoFazenda(EstadoBase):
     def _desenhar_casa(self, tela, fonte_p):
         r = RET_PX_CASA
         x, y, w, h = r.x, r.y, r.width, r.height
-        parede_y   = y + h // 3
 
         # Sombra
         ss = pygame.Surface((w+8, h+8), pygame.SRCALPHA)
-        ss.fill((0, 0, 0, 80))
+        ss.fill((0, 0, 0, 90))
         tela.blit(ss, (x+5, y+5))
 
-        # Paredes (tábuas horizontais)
-        cor_parede = (188, 162, 115)
-        cor_tabua  = (168, 142, 95)
-        pygame.draw.rect(tela, cor_parede, (x, parede_y, w, h - h//3))
-        for py in range(parede_y + 8, y + h, 10):
-            pygame.draw.line(tela, cor_tabua, (x, py), (x+w, py), 1)
-
-        # Telhado de palha
-        cor_telha = (132, 74, 24)
-        pts_telho = [(x-6, parede_y+2), (x+w//2, y+2), (x+w+6, parede_y+2)]
-        pygame.draw.polygon(tela, cor_telha, pts_telho)
-        pygame.draw.polygon(tela, (105, 58, 18), pts_telho, 3)
-        for i in range(5, 35, 7):
-            fr  = i / 35
-            ly  = int(y + 4 + (parede_y - y - 4) * fr)
-            lx1 = int((x-6) + i * (w//2+6) / 35)
-            lx2 = int((x+w+6) - i * (w//2+6) / 35)
-            pygame.draw.line(tela, (110, 62, 16), (lx1, ly), (lx2, ly), 2)
-
-        # Chaminé
-        cx2 = x + w - 38
-        pygame.draw.rect(tela, (118, 72, 42), (cx2, y-20, 16, 27))
-        pygame.draw.rect(tela, (92, 55, 32),  (cx2-2, y-22, 20, 6))
-
-        # Porta arqueada
-        pw, ph = 28, 40
-        px2    = x + w//2 - pw//2
-        pyd    = y + h - ph
-        pygame.draw.rect(tela, (78, 48, 20), (px2, pyd+8, pw, ph-8))
-        pygame.draw.ellipse(tela, (78, 48, 20), (px2, pyd, pw, 16))
-        pygame.draw.rect(tela, (55, 32, 10), (px2, pyd+8, pw, ph-8), 2)
-        pygame.draw.ellipse(tela, (55, 32, 10), (px2, pyd, pw, 16), 2)
-        pygame.draw.circle(tela, (198, 172, 48), (px2+pw-6, pyd+ph-16), 3)
-
-        # Janelas
-        for wx in [x+12, x+w-32]:
-            wy = parede_y + 14
-            pygame.draw.rect(tela, (192, 222, 255), (wx, wy, 20, 18))
-            pygame.draw.line(tela, (122, 158, 198), (wx+10, wy), (wx+10, wy+18), 1)
-            pygame.draw.line(tela, (122, 158, 198), (wx, wy+9), (wx+20, wy+9), 1)
-            pygame.draw.rect(tela, (108, 75, 40), (wx-7, wy-1, 6, 20))
-            pygame.draw.rect(tela, (108, 75, 40), (wx+21, wy-1, 6, 20))
-
-        # Caixinha de flores
-        fb_y = parede_y + 34
-        pygame.draw.rect(tela, (98, 64, 32), (x+9, fb_y, 28, 7))
-        for fi, fc in enumerate([(218,62,62),(198,82,28),(182,58,138)]):
-            fx2 = x + 16 + fi * 8
-            pygame.draw.circle(tela, fc,       (fx2, fb_y-3), 4)
-            pygame.draw.line(tela,  (55,128,40),(fx2, fb_y),  (fx2, fb_y+4), 1)
+        # Sprite da casa escalado para a área do prédio
+        # Casa original: 75x115, área do prédio: 4×3 tiles = 160×120
+        surf_casa = RECURSOS.obter_imagem('casa', (w, h))
+        tela.blit(surf_casa, (x, y))
 
         # Label
         label = fonte_p.render('Casa', True, (255, 242, 208))
@@ -792,20 +775,19 @@ class EstadoFazenda(EstadoBase):
         fx  = r.x - 8
         fy  = r.bottom + 2
         fw  = r.width + 16
-        crc = (132, 92, 45)
-        crl = (148, 108, 55)
 
-        pygame.draw.line(tela, crl, (fx, fy+6),  (fx+fw, fy+6),  4)
-        pygame.draw.line(tela, crl, (fx, fy+18), (fx+fw, fy+18), 4)
-        for px5 in range(fx, fx+fw+1, 14):
-            pygame.draw.rect(tela, crc, (px5-3, fy-2, 6, 30))
+        # Cerca: Fences_8-17.png repetida ao longo da faixa
+        # Escala para 10x22 por estaca para cobrir os 30px de altura
+        sw, sh = 10, 30
+        surf_cerca = RECURSOS.obter_imagem('cerca', (sw, sh))
+        for px5 in range(fx, fx + fw, sw):
+            tela.blit(surf_cerca, (px5, fy - 2))
 
-        # Portão central
+        # Portão central (2 estacas maiores com abertura)
         gx = fx + fw//2 - 14
-        pygame.draw.rect(tela, (162, 122, 62), (gx, fy-2, 28, 30))
-        pygame.draw.line(tela, (135, 95, 42), (gx, fy-2), (gx+28, fy+28), 2)
-        pygame.draw.circle(tela, (76, 56, 26), (gx, fy+8),  3)
-        pygame.draw.circle(tela, (76, 56, 26), (gx, fy+20), 3)
+        surf_portao = RECURSOS.obter_imagem('cerca', (sw+4, sh+4))
+        tela.blit(surf_portao, (gx, fy - 4))
+        tela.blit(surf_portao, (gx + 18, fy - 4))
 
     def _desenhar_interior_casa(self, tela):
         r = RET_PX_CASA

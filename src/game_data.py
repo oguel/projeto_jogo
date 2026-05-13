@@ -1,11 +1,3 @@
-"""
-dados_jogo.py / game_data.py — Classes principais dos dados do jogo.
-
-  Configuracao  – teclas, volumes, padrões de pesca, tela cheia
-  Inventario    – itens, dinheiro, semente ativa, HUD
-  SistemaHorario – relógio do dia
-  DadosJogo     – objeto global compartilhado entre todos os estados
-"""
 import json
 import os
 import pygame
@@ -90,8 +82,8 @@ class Inventario:
 
     # Nomes legíveis das sementes para o HUD
     _NOME_SEMENTE = {
-        ID_SEMENTE:     'Semente',
-        ID_SEMENTE_ESP: 'Especial',
+        ID_SEMENTE:     'Trigo',
+        ID_SEMENTE_ESP: 'Cenoura',
         ID_MUDA:        'Muda',
     }
 
@@ -129,97 +121,117 @@ class Inventario:
         return total
 
     def desenhar_hud(self, tela: pygame.Surface, fonte_pequena, fonte_normal=None, dia: int = 1):
-        """Desenha o HUD de dinheiro e semente ativa no canto esquerdo."""
         fonte_n = fonte_normal or fonte_pequena
 
-        # Painel de dinheiro
-        txt_din  = fonte_pequena.render(f'💰 ${self.dinheiro}', True, (255, 230, 80))
-        box_din  = pygame.Surface((txt_din.get_width() + 12, 24), pygame.SRCALPHA)
-        box_din.fill((18, 14, 4, 195))
-        pygame.draw.rect(box_din, (180, 150, 40), box_din.get_rect(), 1, border_radius=5)
-        tela.blit(box_din,  (4, 4))
-        tela.blit(txt_din,  (10, 7))
+        def _painel(texto, cor_texto, cor_borda, x, y, cor_icone=None):
+            surf = fonte_pequena.render(texto, True, cor_texto)
+            larg = surf.get_width() + (28 if cor_icone else 14)
+            alt  = 24
+            box  = pygame.Surface((larg, alt), pygame.SRCALPHA)
+            box.fill((12, 10, 4, 210))
+            pygame.draw.rect(box, cor_borda, box.get_rect(), 1, border_radius=5)
+            tela.blit(box, (x, y))
+            if cor_icone:
+                pygame.draw.rect(tela, cor_icone, (x + 5, y + 6, 12, 12), border_radius=3)
+                tela.blit(surf, (x + 21, y + 4))
+            else:
+                tela.blit(surf, (x + 7, y + 4))
 
-        # Dia
-        txt_dia  = fonte_pequena.render(f'📅 Dia {dia}', True, (200, 220, 255))
-        box_dia  = pygame.Surface((txt_dia.get_width() + 12, 24), pygame.SRCALPHA)
-        box_dia.fill((18, 14, 4, 195))
-        pygame.draw.rect(box_dia, (80, 100, 160), box_dia.get_rect(), 1, border_radius=5)
-        tela.blit(box_dia,  (4, 32))
-        tela.blit(txt_dia,  (10, 35))
+        _painel(f'${self.dinheiro}',       (255, 230, 80),  (180, 150, 40), 4, 4,  (220, 185, 30))
+        _painel(f'Dia {dia}',              (200, 220, 255), (80, 100, 160), 4, 32, (80, 120, 210))
+        _painel(f'Madeira: {self.madeira}',(200, 170, 110), (120, 90,  40), 4, 60, (160, 110, 50))
 
-        # Painel de madeira
-        txt_mad  = fonte_pequena.render(f'🪵 {self.madeira}', True, (200, 170, 110))
-        box_mad  = pygame.Surface((txt_mad.get_width() + 12, 24), pygame.SRCALPHA)
-        box_mad.fill((18, 14, 4, 195))
-        pygame.draw.rect(box_mad, (120, 90, 40), box_mad.get_rect(), 1, border_radius=5)
-        tela.blit(box_mad,  (4, 60))
-        tela.blit(txt_mad,  (10, 63))
-
-        # Semente ativa — canto inferior esquerdo (maior e mais destacada)
-        _COR_BORDA_SEMENTE = {
+        # Semente ativa
+        _COR_BORDA = {
             ID_SEMENTE:     (60, 200, 60),
-            ID_SEMENTE_ESP: (180, 60, 220),
+            ID_SEMENTE_ESP: (200, 80, 220),
             ID_MUDA:        (50, 170, 90),
         }
-        nome_sem = self._NOME_SEMENTE.get(self.semente_ativa, '?')
-        qtd_sem  = self.quantidade(self.semente_ativa)
-        cor_sem  = (180, 255, 140) if qtd_sem > 0 else (160, 100, 100)
-        txt_sem  = fonte_n.render(f'🌱 {nome_sem}  x{qtd_sem}', True, cor_sem)
-        alt_tela = tela.get_height()
-        larg_box  = txt_sem.get_width() + 18
+        _COR_ICONE = {
+            ID_SEMENTE:     (80, 200, 80),
+            ID_SEMENTE_ESP: (200, 100, 220),
+            ID_MUDA:        (60, 180, 100),
+        }
+        nome_sem  = self._NOME_SEMENTE.get(self.semente_ativa, '?')
+        qtd_sem   = self.quantidade(self.semente_ativa)
+        cor_txt   = (180, 255, 140) if qtd_sem > 0 else (160, 100, 100)
+        cor_borda = _COR_BORDA.get(self.semente_ativa, (60, 130, 60))
+        cor_icone = _COR_ICONE.get(self.semente_ativa, (80, 160, 80))
+        txt_sem   = fonte_n.render(f'{nome_sem}  x{qtd_sem}', True, cor_txt)
+        alt_tela  = tela.get_height()
+        larg_box  = txt_sem.get_width() + 32
         alt_box   = 30
-        box2     = pygame.Surface((larg_box, alt_box), pygame.SRCALPHA)
+        box2      = pygame.Surface((larg_box, alt_box), pygame.SRCALPHA)
         box2.fill((4, 22, 4, 210))
-        cor_borda = _COR_BORDA_SEMENTE.get(self.semente_ativa, (60, 130, 60))
         pygame.draw.rect(box2, cor_borda, box2.get_rect(), 2, border_radius=7)
-        tela.blit(box2,    (4, alt_tela - alt_box - 6))
-        tela.blit(txt_sem, (13, alt_tela - alt_box - 1))
+        tela.blit(box2, (4, alt_tela - alt_box - 6))
+        pygame.draw.rect(tela, cor_icone, (10, alt_tela - alt_box - 1, 14, 20), border_radius=3)
+        tela.blit(txt_sem, (28, alt_tela - alt_box - 1))
+
 
     def desenhar_painel(self, tela: pygame.Surface, fontes: dict, tem_vara: bool):
-        """Desenha o painel completo de inventário (tecla I)."""
         largura, altura = tela.get_size()
-        larg_painel = 360
-        alt_painel  = 440
+        larg_painel = 420
+        alt_painel  = 460
         px = largura  // 2 - larg_painel // 2
         py = altura   // 2 - alt_painel  // 2
 
-        fundo   = pygame.Surface((larg_painel, alt_painel), pygame.SRCALPHA)
-        fundo.fill((10, 14, 28, 245))
-        pygame.draw.rect(fundo, (70, 80, 150), fundo.get_rect(), 2, border_radius=14)
+        # Fundo com borda
+        fundo = pygame.Surface((larg_painel, alt_painel), pygame.SRCALPHA)
+        fundo.fill((10, 14, 28, 248))
+        pygame.draw.rect(fundo, (60, 70, 140), fundo.get_rect(), 2, border_radius=14)
         tela.blit(fundo, (px, py))
 
-        fonte_g = fontes.get('grande', pygame.font.SysFont('arial', 22, bold=True))
-        fonte_n = fontes.get('normal', pygame.font.SysFont('arial', 16))
+        fonte_g = fontes.get('grande',  pygame.font.SysFont('arial', 22, bold=True))
+        fonte_n = fontes.get('normal',  pygame.font.SysFont('arial', 16))
         fonte_p = fontes.get('pequena', pygame.font.SysFont('arial', 13))
 
-        titulo = fonte_g.render('📦 Inventário', True, (255, 235, 100))
-        tela.blit(titulo, (px + larg_painel // 2 - titulo.get_width() // 2, py + 12))
-        pygame.draw.line(tela, (60, 70, 140), (px + 12, py + 44), (px + larg_painel - 12, py + 44), 1)
+        # Titulo
+        titulo = fonte_g.render('INVENTARIO', True, (255, 235, 100))
+        tela.blit(titulo, (px + larg_painel // 2 - titulo.get_width() // 2, py + 10))
+        pygame.draw.line(tela, (60, 70, 140), (px + 12, py + 40), (px + larg_painel - 12, py + 40), 1)
 
-        # Lista de itens
+        # Itens com icone colorido + nome + valor
         itens = [
-            (f'💰 Dinheiro',           f'${self.dinheiro}'),
-            (f'🌱 Semente',             str(self.semente)),
-            (f'✨ Semente Especial',    str(self.semente_esp)),
-            (f'🌳 Muda de Árvore',     str(self.muda)),
-            (f'🌾 Colheita',            str(self.colheita)),
-            (f'💎 Colheita Especial',   str(self.colheita_esp)),
-            (f'🪵 Madeira',             str(self.madeira)),
-            (f'🐟 Peixe Comum',         str(self.peixe_comum)),
-            (f'🌟 Peixe Dourado',       str(self.peixe_dourado)),
-            (f'💜 Peixe Raro',          str(self.peixe_raro)),
-            (f'🎣 Vara de Pesca',       '✅ Sim' if tem_vara else '❌ Não'),
+            ('Dinheiro',        f'${self.dinheiro}',   (220, 185,  30)),
+            ('Trigo (semente)', str(self.semente),     ( 80, 200,  80)),
+            ('Cenoura (sem.)',  str(self.semente_esp), (200, 100, 220)),
+            ('Muda de Arvore',  str(self.muda),        ( 60, 180, 100)),
+            ('Trigo (colh.)',   str(self.colheita),    (240, 210,  50)),
+            ('Cenoura (colh.)', str(self.colheita_esp),(240, 100,  60)),
+            ('Madeira',         str(self.madeira),     (160, 110,  50)),
+            ('Peixe Comum',     str(self.peixe_comum), ( 80, 160, 255)),
+            ('Peixe Dourado',   str(self.peixe_dourado),(255, 200,  40)),
+            ('Peixe Raro',      str(self.peixe_raro),  (180,  80, 240)),
+            ('Vara de Pesca',   'SIM' if tem_vara else 'NAO', (80, 220, 80) if tem_vara else (180, 80, 80)),
         ]
-        for indice, (rotulo, valor) in enumerate(itens):
-            linha_y = py + 56 + indice * 32
-            cor_label = (200, 200, 230)
-            cor_valor = (255, 240, 140) if indice == 0 else (180, 230, 180)
-            tela.blit(fonte_n.render(rotulo, True, cor_label), (px + 18, linha_y))
-            surf_val  = fonte_n.render(valor, True, cor_valor)
-            tela.blit(surf_val, (px + larg_painel - surf_val.get_width() - 18, linha_y))
 
-        dica = fonte_p.render('[ I ] ou [ ESC ] para fechar', True, (80, 80, 110))
+        col_larg = (larg_painel - 24) // 2
+        for i, (rotulo, valor, cor_ic) in enumerate(itens):
+            col   = i % 2
+            linha = i // 2
+            ix    = px + 12 + col * (col_larg + 0)
+            iy    = py + 50 + linha * 38
+
+            # Fundo do card
+            card = pygame.Surface((col_larg, 32), pygame.SRCALPHA)
+            card.fill((20, 24, 48, 180))
+            pygame.draw.rect(card, (*cor_ic, 80), card.get_rect(), 1, border_radius=6)
+            tela.blit(card, (ix, iy))
+
+            # Icone colorido
+            pygame.draw.rect(tela, cor_ic, (ix + 5, iy + 8, 10, 16), border_radius=3)
+
+            # Rotulo
+            t_rot = fonte_p.render(rotulo, True, (190, 190, 210))
+            tela.blit(t_rot, (ix + 20, iy + 4))
+
+            # Valor
+            cor_val = cor_ic if valor not in ('0', 'NAO') else (100, 100, 120)
+            t_val = fonte_n.render(valor, True, cor_val)
+            tela.blit(t_val, (ix + col_larg - t_val.get_width() - 8, iy + 10))
+
+        dica = fonte_p.render('[ I ] ou [ ESC ] para fechar', True, (70, 70, 110))
         tela.blit(dica, (px + larg_painel // 2 - dica.get_width() // 2, py + alt_painel - 22))
 
 

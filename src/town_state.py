@@ -205,18 +205,16 @@ class EstadoCidade(EstadoBase):
         fonte_n = FONTES.get('normal',  pygame.font.SysFont('arial', 18))
         fonte_g = FONTES.get('grande',  pygame.font.SysFont('arial', 28, bold=True))
 
-        # Chão rústico
+        # Choão rústico base
         tela.fill((172, 140, 88))
 
-        # Estrada central
+        # Estrada central: Path_Middle tile repetido em grade
         x_est, larg_est = 165, 470
-        pygame.draw.rect(tela, (155, 122, 74), (x_est, 0, larg_est, altura))
-        for linha_y in range(0, altura, 5):
-            e = 6 if (linha_y // 4) % 2 == 0 else 0
-            pygame.draw.line(tela, (155-e, 122-e, 74-e),
-                             (x_est, linha_y), (x_est + larg_est, linha_y), 1)
+        for ty in range(0, altura, TAM_TILE):
+            for tx in range(x_est, x_est + larg_est, TAM_TILE):
+                tela.blit(RECURSOS.obter_imagem('chao_cidade', (TAM_TILE, TAM_TILE)), (tx, ty))
 
-        # Calçada de pedras
+        # Calçada de pedras laterais (mantém procedural)
         cor_pc = (148, 135, 112)
         cor_pe = (125, 112, 90)
         for linha_y in range(0, altura, 16):
@@ -226,23 +224,15 @@ class EstadoCidade(EstadoBase):
                     cor = cor_pc if (linha_y + col_p) % 2 == 0 else cor_pe
                     pygame.draw.rect(tela, cor, (px, linha_y+2, 14, 10), border_radius=2)
 
-        # Prédios dos 4 cantos
-        self._desenhar_loja(tela, fonte_p, pygame.Rect(0, 0, 165, 210),
-                             (185,158,108), (132,72,22), (62,112,38),
-                             '🌾 Sementes', 196, porta_sul=True,
-                             extras=self._extras_sementes)
-        self._desenhar_loja(tela, fonte_p, pygame.Rect(635, 0, 165, 210),
-                             (145,162,172), (62,88,115), (35,72,128),
-                             '🐟 Pesca & Cia', 196, porta_sul=True,
-                             extras=self._extras_pesca)
-        self._desenhar_loja(tela, fonte_p, pygame.Rect(0, 390, 165, 210),
-                             (162,145,122), (92,75,58), (85,55,26),
-                             '🔨 Construção', 375, porta_sul=False,
-                             extras=self._extras_construcao)
-        self._desenhar_loja(tela, fonte_p, pygame.Rect(635, 390, 165, 210),
-                             (172,155,115), (122,85,36), (125,70,26),
-                             '🐄 Animais', 375, porta_sul=False,
-                             extras=self._extras_animais)
+        # Prédios dos 4 cantos: casa_vila para lojas normais, casa_pescador para pesca
+        self._desenhar_casa_loja(tela, fonte_p, pygame.Rect(0,   0,   165, 210),
+                                 'Sementes',   porta_sul=True,  sprite='casa_vila')
+        self._desenhar_casa_loja(tela, fonte_p, pygame.Rect(635, 0,   165, 210),
+                                 'Pesca',       porta_sul=True,  sprite='casa_pescador')
+        self._desenhar_casa_loja(tela, fonte_p, pygame.Rect(0,   390, 165, 210),
+                                 'Construcao',  porta_sul=False, sprite='casa_vila')
+        self._desenhar_casa_loja(tela, fonte_p, pygame.Rect(635, 390, 165, 210),
+                                 'Animais',    porta_sul=False, sprite='casa_vila')
 
         # Centro (poço, árvores, lanternas)
         self._desenhar_centro(tela, largura, altura)
@@ -313,7 +303,7 @@ class EstadoCidade(EstadoBase):
         hora_str, hora, _ = self.hor.hora_atual()
         noite   = hora >= 20
         cor_h   = (255, 200, 100) if noite else (255, 255, 220)
-        surf    = fonte.render(f'🕐 {hora_str}', True, cor_h)
+        surf    = fonte.render(hora_str, True, cor_h)
         larg_b  = surf.get_width() + 16
         x_b     = largura - larg_b - 4
         pygame.draw.rect(tela, (12,8,28) if noite else (18,18,45),
@@ -339,6 +329,33 @@ class EstadoCidade(EstadoBase):
             tela.blit(t1, (largura//2 - t1.get_width()//2, altura//2 - 48))
             tela.blit(t2, (largura//2 - t2.get_width()//2, altura//2 - 16))
             tela.blit(t3, (largura//2 - t3.get_width()//2, altura//2 + 30))
+
+    def _desenhar_casa_loja(self, tela, fonte_p, ret, placa, porta_sul, sprite='casa_vila'):
+        """Desenha uma loja usando o sprite de casa correto escalado para o rect."""
+        x, y, larg, alt = ret.x, ret.y, ret.width, ret.height
+
+        # Sombra
+        sombra = pygame.Surface((larg+6, alt+6), pygame.SRCALPHA)
+        sombra.fill((0, 0, 0, 78))
+        tela.blit(sombra, (x+5, y+5))
+
+        # Sprite escalado para o predio
+        surf_casa = RECURSOS.obter_imagem(sprite, (larg, alt))
+
+        # Lojas de baixo: espelha verticalmente (porta no topo)
+        if not porta_sul:
+            surf_casa = pygame.transform.flip(surf_casa, False, True)
+
+        tela.blit(surf_casa, (x, y))
+
+        # Placa da loja
+        tp   = fonte_p.render(placa, True, (255, 240, 200))
+        lp2  = tp.get_width() + 14
+        xp2  = x + larg//2 - lp2//2
+        y_pl = y + alt - 30 if porta_sul else y + 10
+        pygame.draw.rect(tela, (115, 86, 44), (xp2, y_pl, lp2, 20), border_radius=4)
+        pygame.draw.rect(tela, (90,  66, 30), (xp2, y_pl, lp2, 20), 2, border_radius=4)
+        tela.blit(tp, (xp2+7, y_pl+3))
 
     def _desenhar_loja(self, tela, fonte_p, ret, cor_parede, cor_telhado,
                        cor_porta, placa, y_placa, porta_sul, extras=None):
@@ -443,7 +460,7 @@ class EstadoCidade(EstadoBase):
         pygame.draw.ellipse(tela, (255,232,55), (x+larg-28, y+alt-36, 22, 14))
 
     def _desenhar_centro(self, tela, largura, altura):
-        """Poço, árvores decorativas e postes de lanterna."""
+        """Poço, árvores decorativas e postes de lanterna com sprites reais."""
         cx, cy = largura // 2, altura // 2
 
         # Poço
@@ -463,8 +480,9 @@ class EstadoCidade(EstadoBase):
             pygame.draw.circle(tela, (35,118,35), (pos_a+6, altura-115), 22)
             pygame.draw.circle(tela, (28,98,28),  (pos_a+6, altura-118), 16)
 
-        # Postes de lanterna
+        # Postes de lanterna — usa sprite lampada_16-42.png
+        # Sprite original: 16x42, escala para proporção compatível com a cena
+        lw, lh = 24, 64   # largura x altura escalada do poste na tela
         for pos_p in [largura//2 - 85, largura//2 + 65]:
-            pygame.draw.rect(tela, (68,52,32),  (pos_p, altura//2-55, 5, 65))
-            pygame.draw.rect(tela, (68,68,42),  (pos_p-6, altura//2-60, 17, 12))
-            pygame.draw.rect(tela, (248,215,95),(pos_p-4, altura//2-58, 13, 8))
+            surf_lamp = RECURSOS.obter_imagem('lampada', (lw, lh))
+            tela.blit(surf_lamp, (pos_p - lw//2, altura//2 - lh + 10))
