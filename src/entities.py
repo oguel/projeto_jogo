@@ -1,6 +1,3 @@
-"""
-entidades.py / entities.py — Jogador, NPCs, Diálogos e Animais.
-"""
 import pygame
 import random
 import math
@@ -15,9 +12,9 @@ from src.constants import (
 )
 from src import assets as RECURSOS
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # Jogador — sprite direcional, um único jogador
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 LARG_JOG = 32
 ALT_JOG  = 48
 
@@ -66,9 +63,9 @@ class Jogador:
 
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# Diálogo — caixas de conversa com NPCs
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Diálogo
+
 class OpcaoDialogo:
     """Uma opção clicável dentro de um diálogo de NPC."""
     def __init__(self, rotulo: str, acao, habilitado: bool = True):
@@ -180,9 +177,8 @@ class DialogoNPC:
         tela.blit(dica, (bx + self.LARG // 2 - dica.get_width() // 2, by + self.ALT - 14))
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # NPCs — base
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 LARG_NPC = 32
 ALT_NPC  = 48
 
@@ -210,10 +206,8 @@ class NPCBase:
     def obter_dialogo(self, dados_jogo) -> DialogoNPC:
         return DialogoNPC(self.nome, [])
 
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # NPCs específicos
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 class NPCFazendeiro(NPCBase):
     def __init__(self, x, y):
         super().__init__('Fazendeiro', 'npc_fazendeiro', x, y)
@@ -349,13 +343,8 @@ class NPCConstrutor(NPCBase):
 
         return DialogoNPC('Construtor', opcoes)
 
+# movimentação animais
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# Animais — movimentação dentro dos prédios
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-# Área de movimentação de cada tipo de animal calculada dinamicamente
-# com base nas posições reais dos prédios em pixels.
 def _calc_area_animal(ret_tiles: tuple, margem: int = 6) -> pygame.Rect:
     """Converte um ret de tiles (col, lin, larg, alt) para pixels com margem interna."""
     col, lin, larg, alt = ret_tiles
@@ -401,17 +390,14 @@ def atualizar_animais(lista_animais: list):
 
 def desenhar_animais(tela: pygame.Surface, lista_animais: list):
     for animal in lista_animais:
-        ax  = int(animal['x'])
-        ay  = int(animal['y'])
+        ax   = int(animal['x'])
+        ay   = int(animal['y'])
         tipo = animal.get('tipo', 'galinha')
-        movendo_dir = animal.get('vx', 0) >= 0
+        dir_ = animal.get('vx', 0) >= 0
 
         if tipo == 'vaca':
-            chave = 'animal_vaca_dir' if movendo_dir else 'animal_vaca'
-            surf  = RECURSOS.obter_imagem(chave, (32, 24))
-            tela.blit(surf, (ax, ay))
-
+            chave = 'animal_vaca_dir' if dir_ else 'animal_vaca'
+            tela.blit(RECURSOS.obter_imagem(chave, (38, 30)), (ax, ay))
         elif tipo == 'galinha':
-            chave = 'animal_galinha_dir' if movendo_dir else 'animal_galinha'
-            surf  = RECURSOS.obter_imagem(chave, (TAMANHO_ANIMAL, TAMANHO_ANIMAL))
-            tela.blit(surf, (ax, ay))
+            chave = 'animal_galinha_dir' if dir_ else 'animal_galinha'
+            tela.blit(RECURSOS.obter_imagem(chave, (20, 20)), (ax, ay))

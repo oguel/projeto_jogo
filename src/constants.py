@@ -1,11 +1,8 @@
-"""
-constantes.py — Todas as constantes do projeto. Tudo em português.
-"""
 import pygame
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # Tela e tempo
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 LARGURA  = 800
 ALTURA   = 600
 TAM_TILE = 40          # tamanho de cada tile em pixels
@@ -13,21 +10,23 @@ FPS      = 60
 COLUNAS  = LARGURA  // TAM_TILE   # 20 colunas
 LINHAS   = ALTURA   // TAM_TILE   # 15 linhas
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # Tipos de tile
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 GRAMA       = 0
 SOLO        = 1
-SEMENTE     = 2   # semente comum plantada
-SEMENTE_ESP = 3   # semente especial plantada
-MUDA        = 4   # muda de árvore jovem
-ARVORE      = 5   # árvore crescida
+SEMENTE     = 2   
+SEMENTE_ESP = 3   
+MUDA        = 4   
+ARVORE      = 5   
 AGUA        = 6
 PIER        = 7
+COLHEITA    = 8   # planta comum madura pronta para colher
+COLHEITA_ESP = 9  # planta especial madura pronta para colher
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# Identificadores de item do inventário (IDs internos)
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Identificadores de item do inventário
+
 ID_SEMENTE        = 'semente'
 ID_SEMENTE_ESP    = 'semente_esp'
 ID_MUDA           = 'muda'
@@ -38,9 +37,9 @@ ID_PEIXE_COMUM    = 'peixe_comum'
 ID_PEIXE_DOURADO  = 'peixe_dourado'
 ID_PEIXE_RARO     = 'peixe_raro'
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # Estado dos prédios
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 ESTABULO_QUEBRADO    = 'estabulo_quebrado'
 ESTABULO_FIXO        = 'estabulo_fixo'
 GALINHEIRO_QUEBRADO  = 'galinheiro_quebrado'
@@ -51,16 +50,16 @@ CUSTO_REPARO = {
     GALINHEIRO_QUEBRADO: {'dinheiro': 40, 'madeira':  5},
 }
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# Tempo de crescimento das plantas (milissegundos)
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TEMPO_SEMENTE   = 15_000   # semente comum
-TEMPO_ESPECIAL  = 30_000   # semente especial
-TEMPO_MUDA      = 60_000   # muda crescer em árvore
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Tempo de crescimento das plantas (ms)
+
+TEMPO_SEMENTE   = 15_000   
+TEMPO_ESPECIAL  = 30_000   
+TEMPO_MUDA      = 60_000   
+
+
 # Preços
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 PRECOS_VENDA = {
     ID_COLHEITA:      5,
     ID_COLHEITA_ESP: 15,
@@ -81,10 +80,9 @@ CUSTO_ANIMAIS = {
     'galinha': {'dinheiro': 20, 'nome': 'Galinha', 'predio': GALINHEIRO_FIXO},
 }
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # Teclas padrão do jogador
-# Os nomes das ações são usados como chaves no dicionário de teclas
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 TECLAS_PADRAO = {
     'cima':       pygame.K_w,
     'baixo':      pygame.K_s,
@@ -99,9 +97,9 @@ TECLAS_PADRAO = {
     'inventario': pygame.K_i,
 }
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # Minigame de pesca: lanes e padrões
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 ACOES_PESCA  = ['esquerda', 'baixo', 'cima', 'direita']
 LABELS_PESCA = ['A', 'S', 'W', 'D']
 CORES_PESCA  = [
@@ -147,38 +145,37 @@ PADROES_PESCA_PADRAO = {
     },
 }
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# Posições dos prédios na fazenda (col, lin, larg, alt) em tiles
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-RET_CASA        = (0, 0, 4, 3)   # Casa:       cols 0-3,  linhas 0-2
-RET_ESTABULO    = (0, 7, 4, 4)   # Estábulo:   cols 0-3,  linhas 7-10
-RET_GALINHEIRO  = (6, 0, 3, 3)   # Galinheiro: cols 6-8,  linhas 0-2 (espaço de 2 cols da casa)
+
+# Posições dos prédios na fazenda (col, lin, larg, alt)
+
+RET_CASA        = (0, 0, 4, 3)  
+RET_ESTABULO    = (0, 7, 4, 4)   
+RET_GALINHEIRO  = (6, 0, 3, 3)   
 
 # Lago e pier de pesca
 COLS_LAGO    = range(12, 20)
 LINHAS_LAGO  = range( 9, 15)
 COLS_PIER    = range( 9, 16)
 LINHAS_PIER  = range(11, 13)
-COL_PESCAR   = 15   # última coluna do pier acessível
+COL_PESCAR   = 15   
 
-# Spawn do jogador: dentro da casa
 SPAWN_X = 64
 SPAWN_Y = 50
 
-# Cor de fundo do pier (usada como base sob o sprite de ponte)
+# Cor de fundo do pier
 COR_PIER    = (120,  80,  40)
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# Sistema de tempo interno
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-HORA_INICIO        = 8    # hora de início do dia
-HORA_FIM           = 24   # hora em que o jogador desmaia
-MINUTOS_POR_TICK   = 10   # minutos de jogo por intervalo real
-SEGUNDOS_POR_TICK  = 5    # segundos reais por intervalo
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Sistema de tempo interno
+
+HORA_INICIO        = 8    
+HORA_FIM           = 24  
+MINUTOS_POR_TICK   = 10   
+SEGUNDOS_POR_TICK  = 5   
+
+
 # Volumes padrão
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 VOLUMES_PADRAO = {
     'animais':    0.8,
     'plantas':    0.6,

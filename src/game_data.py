@@ -17,10 +17,14 @@ CAMINHO_CONFIG = os.path.join(
     'config.json'
 )
 
+CAMINHO_SAVE = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    'save.json'
+)
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # Configuracao — teclas, áudio, tela
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 class Configuracao:
     def __init__(self):
         self.teclas            = dict(TECLAS_PADRAO)
@@ -60,10 +64,8 @@ class Configuracao:
         except Exception:
             pass
 
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Inventario — tudo que o jogador possui
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 CICLO_SEMENTES = [ID_SEMENTE, ID_SEMENTE_ESP, ID_MUDA]
 
 class Inventario:
@@ -315,3 +317,96 @@ class DadosJogo:
 
         # Navegação entre mapas
         self.ultimo_mapa        = 'fazenda'   # 'fazenda' | 'cidade'
+
+        # Carrega save automático (se existir)
+        self.carregar()
+
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # Sistema de save/load — save.json
+    # Para resetar o jogo: delete o arquivo save.json na pasta do jogo
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    def salvar(self):
+        """Salva o estado completo do jogo em save.json."""
+        inv = self.inventario
+        hor = self.horario
+
+        # Serializa o mapa (lista de listas de ints)
+        mapa_serial = self.mapa_fazenda if self.mapa_fazenda is not None else None
+
+        # Serializa timer de plantas: chave str 'col,lin', valor timestamp
+        tp_serial = {
+            f'{c},{l}': t for (c, l), t in self.timer_plantas.items()
+        }
+
+        dados = {
+            # Inventário
+            'dinheiro':     inv.dinheiro,
+            'semente':      inv.semente,
+            'semente_esp':  inv.semente_esp,
+            'muda':         inv.muda,
+            'colheita':     inv.colheita,
+            'colheita_esp': inv.colheita_esp,
+            'madeira':      inv.madeira,
+            'peixe_comum':  inv.peixe_comum,
+            'peixe_dourado':inv.peixe_dourado,
+            'peixe_raro':   inv.peixe_raro,
+            'semente_ativa':inv.semente_ativa,
+            # Horario / dia
+            'dia':          hor.dia,
+            # Estado dos prédios
+            'predios':      self.predios,
+            # Animais
+            'animais':      self.animais,
+            # Pesca
+            'tem_vara':     self.tem_vara,
+            # Mapa e plantas
+            'mapa_fazenda': mapa_serial,
+            'timer_plantas': tp_serial,
+        }
+        try:
+            with open(CAMINHO_SAVE, 'w', encoding='utf-8') as arq:
+                json.dump(dados, arq, indent=2, ensure_ascii=False)
+        except Exception:
+            pass
+
+    def carregar(self):
+        """Carrega o save.json se existir. Nada é feito se não houver save."""
+        if not os.path.isfile(CAMINHO_SAVE):
+            return
+        try:
+            with open(CAMINHO_SAVE, encoding='utf-8') as arq:
+                d = json.load(arq)
+        except Exception:
+            return
+
+        inv = self.inventario
+        inv.dinheiro      = int(d.get('dinheiro',      inv.dinheiro))
+        inv.semente       = int(d.get('semente',       inv.semente))
+        inv.semente_esp   = int(d.get('semente_esp',   inv.semente_esp))
+        inv.muda          = int(d.get('muda',          inv.muda))
+        inv.colheita      = int(d.get('colheita',      inv.colheita))
+        inv.colheita_esp  = int(d.get('colheita_esp',  inv.colheita_esp))
+        inv.madeira       = int(d.get('madeira',       inv.madeira))
+        inv.peixe_comum   = int(d.get('peixe_comum',   inv.peixe_comum))
+        inv.peixe_dourado = int(d.get('peixe_dourado', inv.peixe_dourado))
+        inv.peixe_raro    = int(d.get('peixe_raro',    inv.peixe_raro))
+        inv.semente_ativa = d.get('semente_ativa', inv.semente_ativa)
+
+        self.horario.dia = int(d.get('dia', 1))
+
+        if 'predios' in d:
+            self.predios.update(d['predios'])
+
+        if 'animais' in d:
+            self.animais = list(d['animais'])
+
+        self.tem_vara = bool(d.get('tem_vara', False))
+
+        if 'mapa_fazenda' in d and d['mapa_fazenda'] is not None:
+            self.mapa_fazenda = d['mapa_fazenda']
+
+        if 'timer_plantas' in d:
+            self.timer_plantas = {
+                (int(k.split(',')[0]), int(k.split(',')[1])): int(v)
+                for k, v in d['timer_plantas'].items()
+            }

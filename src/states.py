@@ -18,9 +18,7 @@ def inicializar_fontes():
     }
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# EstadoBase — todos os estados herdam daqui
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 class EstadoBase:
     def processar_eventos(self, eventos: list) -> 'EstadoBase':
         return self
@@ -32,9 +30,6 @@ class EstadoBase:
         pass
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# EstadoTitulo — animação noturna com estrelas e lua
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 class EstadoTitulo(EstadoBase):
     def __init__(self, dados_jogo):
         self.gd      = dados_jogo
@@ -117,9 +112,7 @@ class EstadoTitulo(EstadoBase):
         tela.blit(versao, (8, altura - 22))
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# EstadoIntro — slides de história
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 class EstadoIntro(EstadoBase):
     SLIDES = [
         "Uma antiga fazenda está sendo leiloada...",
@@ -169,8 +162,6 @@ class EstadoIntro(EstadoBase):
             f'({self.slide_idx+1}/{len(self.SLIDES)})  ENTER ou clique para continuar',
             True, (100, 100, 100))
         tela.blit(dica, (largura // 2 - dica.get_width() // 2, altura // 2 + 38))
-
-
 
 # EstadoDesmaio — tela de desmaio (meia-noite) ou dormir
 

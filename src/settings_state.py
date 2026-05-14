@@ -1,22 +1,11 @@
-"""
-configuracoes_estado.py / settings_state.py — Tela de Configurações (ESC).
-
-3 Abas (clicáveis com mouse):
-  🖥 Tela   – fullscreen / janela
-  ⌨ Teclas  – rebind de teclas (click ou ENTER)
-  🔊 Sons   – sliders de volume com mouse
-
-Botões: [Voltar] e [Sair do Jogo]
-Salva config.json ao sair.
-"""
 import pygame
 import sys
 
 from src.states   import EstadoBase, FONTES
 
-ABAS = ['🖥  Tela', '⌨  Teclas', '🔊  Sons']
+ABAS = ['[ Tela ]', '[ Teclas ]', '[ Sons ]']
 
-# Labels das ações de teclado (chaves PT → texto exibido)
+# Labels das acoes de teclado 
 LABELS_ACAO = {
     'cima':       'Cima',
     'baixo':      'Baixo',
@@ -26,16 +15,16 @@ LABELS_ACAO = {
     'plantar':    'Plantar',
     'colher':     'Colher',
     'pescar':     'Pescar',
-    'cortar':     'Cortar Árvore',
+    'cortar':     'Cortar Arvore',
     'ciclar':     'Trocar Semente',
 }
 
 LABELS_VOLUME = {
-    'animais':    '🐄 Animais',
-    'plantas':    '🌱 Plantas',
-    'pesca':      '🎣 Pesca',
-    'interface':  '🖱 Interface',
-    'musica':     '🎵 Música',
+    'animais':    'Animais',
+    'plantas':    'Plantas',
+    'pesca':      'Pesca',
+    'interface':  'Interface',
+    'musica':     'Musica',
 }
 
 LARG_PAINEL = 620
@@ -50,17 +39,17 @@ def _nome_tecla(k: int) -> str:
 
 class EstadoConfiguracoes(EstadoBase):
     def __init__(self, dados_jogo, estado_anterior: EstadoBase):
-        self.gd      = dados_jogo
+        self.gd       = dados_jogo
         self.anterior = estado_anterior
-        self.cfg     = dados_jogo.configuracao
-        self.aba     = 0
-        self.linha   = 0
-        self.rebindando    = None   # ação sendo rebindada (str) ou None
-        self.arrastando    = None   # categoria de volume sendo arrastada
-        self._fechar       = False
-        self._sair         = False
+        self.cfg      = dados_jogo.configuracao
+        self.aba      = 0
+        self.linha    = 0
+        self.rebindando  = None   
+        self.arrastando  = None   
+        self._fechar     = False
+        self._sair       = False
 
-    # ── Posições do painel ───────────────────────────────────────
+    # -- Posicoes do painel 
     @property
     def _px(self): return 800 // 2 - LARG_PAINEL // 2
     @property
@@ -70,7 +59,7 @@ class EstadoConfiguracoes(EstadoBase):
     @property
     def _cy(self): return self._py + 108
 
-    # ── Processar eventos ────────────────────────────────────────
+    # -- Processar eventos 
     def processar_eventos(self, eventos: list):
         for evento in eventos:
             if evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 1:
@@ -109,17 +98,17 @@ class EstadoConfiguracoes(EstadoBase):
                 self.linha = 0
                 return
 
-        # Botão Voltar
+        # Botao Voltar
         if pygame.Rect(px + 16, py + ALT_PAINEL - 52, 130, 36).collidepoint(mx, my):
             self._fechar = True
             return
 
-        # Botão Sair
+        # Botao Sair
         if pygame.Rect(px + LARG_PAINEL - 148, py + ALT_PAINEL - 52, 132, 36).collidepoint(mx, my):
             self._sair = True
             return
 
-        # Conteúdo das abas
+        # Conteudo das abas
         if self.aba == 0:   # Tela
             btn       = pygame.Rect(cx, cy + 20, 320, 44)
             btn_debug = pygame.Rect(cx, cy + 84, 260, 36)
@@ -134,7 +123,7 @@ class EstadoConfiguracoes(EstadoBase):
             alt_li = 30
             for i, acao in enumerate(acoes):
                 if pygame.Rect(cx-4, cy + i * alt_li - 2, LARG_PAINEL-32, alt_li).collidepoint(mx, my):
-                    self.linha     = i
+                    self.linha      = i
                     self.rebindando = acao
                     break
 
@@ -202,7 +191,7 @@ class EstadoConfiguracoes(EstadoBase):
                 cat = cats[self.linha]
                 self.cfg.volumes[cat] = max(0.0, min(1.0, self.cfg.volumes.get(cat, 0.5) + delta))
 
-    # ── Desenho ──────────────────────────────────────────────────
+    # -- Desenho -------------------------------------------------------
     def desenhar(self, tela: pygame.Surface):
         largura, altura = tela.get_size()
         px, py = self._px, self._py
@@ -225,7 +214,7 @@ class EstadoConfiguracoes(EstadoBase):
         fonte_n = FONTES.get('normal', pygame.font.SysFont('arial', 18))
         fonte_p = FONTES.get('pequena', pygame.font.SysFont('arial', 14))
 
-        titulo = fonte_g.render('⚙  Configurações', True, (255, 238, 120))
+        titulo = fonte_g.render('Configuracoes', True, (255, 238, 120))
         tela.blit(titulo, (px + LARG_PAINEL // 2 - titulo.get_width() // 2, py + 12))
 
         # Abas
@@ -243,20 +232,20 @@ class EstadoConfiguracoes(EstadoBase):
 
         pygame.draw.line(tela, (50, 50, 100), (px+8, py+92), (px+LARG_PAINEL-8, py+92), 1)
 
-        # Conteúdo
+        # Conteudo
         if self.aba == 0:   self._desenhar_aba_tela(tela, cx, cy, fonte_n, fonte_p, mx, my)
         elif self.aba == 1: self._desenhar_aba_teclas(tela, cx, cy, fonte_p, mx, my)
         elif self.aba == 2: self._desenhar_aba_sons(tela, cx, cy, fonte_n, fonte_p, mx, my)
 
-        # Botão Voltar
+        # Botao Voltar
         ret_vol = pygame.Rect(px + 16, py + ALT_PAINEL - 52, 130, 36)
         hover_v = ret_vol.collidepoint(mx, my)
         pygame.draw.rect(tela, (45, 90, 160) if hover_v else (30, 65, 120), ret_vol, border_radius=9)
         pygame.draw.rect(tela, (80, 140, 255), ret_vol, 2, border_radius=9)
-        tv = fonte_n.render('◀  Voltar', True, (255, 255, 255))
+        tv = fonte_n.render('< Voltar', True, (255, 255, 255))
         tela.blit(tv, (ret_vol.centerx - tv.get_width()//2, ret_vol.centery - tv.get_height()//2))
 
-        # Botão Sair
+        # Botao Sair
         ret_sai = pygame.Rect(px + LARG_PAINEL - 148, py + ALT_PAINEL - 52, 132, 36)
         hover_s = ret_sai.collidepoint(mx, my)
         pygame.draw.rect(tela, (160, 40, 40) if hover_s else (110, 28, 28), ret_sai, border_radius=9)
@@ -279,8 +268,9 @@ class EstadoConfiguracoes(EstadoBase):
             tela.blit(h2,  (largura//2 - h2.get_width()//2, altura//2 + 24))
 
     def _desenhar_aba_tela(self, tela, cx, cy, fonte_n, fonte_p, mx, my):
-        """Aba de configurações de tela."""
-        label  = f"Tela Cheia: {'✅  Ativa' if self.cfg.tela_cheia else '☐  Desativada'}"
+        """Aba de configuracoes de tela."""
+        status = 'ATIVA' if self.cfg.tela_cheia else 'DESATIVADA'
+        label  = f'Tela Cheia: [ {status} ]'
         btn    = pygame.Rect(cx, cy + 20, 320, 44)
         hover  = btn.collidepoint(mx, my)
         pygame.draw.rect(tela, (55, 75, 160) if hover else (38, 45, 110), btn, border_radius=10)
@@ -288,22 +278,11 @@ class EstadoConfiguracoes(EstadoBase):
         ls = fonte_n.render(label, True, (255, 255, 100))
         tela.blit(ls, (btn.centerx - ls.get_width()//2, btn.centery - ls.get_height()//2))
 
-        # Botão debug
-        btn_d  = pygame.Rect(cx, cy + 84, 260, 36)
-        hov_d  = btn_d.collidepoint(mx, my)
-        pygame.draw.rect(tela, (60, 35, 90) if hov_d else (40, 22, 65), btn_d, border_radius=8)
-        pygame.draw.rect(tela, (180, 80, 255), btn_d, 2, border_radius=8)
-        dbt = fonte_p.render('💰 +10.000 moedas (debug/teste)', True, (210, 160, 255))
-        tela.blit(dbt, (btn_d.x + 10, btn_d.centery - dbt.get_height()//2))
-
-        nota = fonte_p.render('Clique ou ENTER para alternar tela cheia.', True, (90, 90, 90))
-        tela.blit(nota, (cx, cy + 132))
-
     def _desenhar_aba_teclas(self, tela, cx, cy, fonte_p, mx, my):
-        """Aba de configurações de teclas."""
+        """Aba de configuracoes de teclas."""
         acoes  = list(LABELS_ACAO.keys())
         alt_li = 30
-        cabec  = fonte_p.render(f"{'Ação':<30}{'Tecla Atual':>14}", True, (140, 140, 210))
+        cabec  = fonte_p.render(f"{'Acao':<22}{'Tecla Atual':>80}", True, (140, 140, 210))
         tela.blit(cabec, (cx, cy - 20))
 
         for i, acao in enumerate(acoes):
@@ -316,8 +295,8 @@ class EstadoConfiguracoes(EstadoBase):
                 tela.blit(fundo, (cx-4, ry))
 
             cor  = (255, 255, 100) if sel else (200, 200, 200)
-            pref = '▶ ' if sel else '  '
-            label_acao = fonte_p.render(pref + LABELS_ACAO[acao], True, cor)
+            pref = '> ' if sel else '  '
+            label_acao  = fonte_p.render(pref + LABELS_ACAO[acao], True, cor)
             label_tecla = fonte_p.render(
                 f'[ {_nome_tecla(self.cfg.teclas.get(acao, 0))} ]', True, (160, 210, 255))
             tela.blit(label_acao,  (cx,     ry + 5))
@@ -327,7 +306,7 @@ class EstadoConfiguracoes(EstadoBase):
         tela.blit(nota, (cx, cy + len(acoes) * alt_li + 8))
 
     def _desenhar_aba_sons(self, tela, cx, cy, fonte_n, fonte_p, mx, my):
-        """Aba de configurações de volume."""
+        """Aba de configuracoes de volume."""
         cats   = list(LABELS_VOLUME.keys())
         bar_x  = cx + 190
         alt_li = 52
@@ -338,7 +317,7 @@ class EstadoConfiguracoes(EstadoBase):
             vol  = self.cfg.volumes.get(cat, 0.5)
             cor  = (255, 255, 100) if sel else (200, 200, 200)
 
-            pref  = '▶ ' if sel else '  '
+            pref  = '> ' if sel else '  '
             label = fonte_p.render(pref + LABELS_VOLUME[cat], True, cor)
             tela.blit(label, (cx, ry + 6))
 
@@ -362,5 +341,5 @@ class EstadoConfiguracoes(EstadoBase):
             pct = fonte_p.render(f'{int(vol * 100)}%', True, cor)
             tela.blit(pct, (bar_x + LARG_BARRA + 10, ry + 4))
 
-        nota = fonte_p.render('Clique/arraste a barra  ou  ← → para ajustar', True, (80, 80, 80))
+        nota = fonte_p.render('Clique/arraste a barra  ou  <- -> para ajustar', True, (80, 80, 80))
         tela.blit(nota, (cx, cy + len(cats) * alt_li + 8))

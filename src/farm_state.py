@@ -6,12 +6,11 @@ from src.states    import EstadoBase, FONTES
 from src.constants import (
     TAM_TILE, COLUNAS, LINHAS,
     GRAMA, SOLO, SEMENTE, SEMENTE_ESP,
-    MUDA, ARVORE, AGUA, PIER,
+    MUDA, ARVORE, AGUA, PIER, COLHEITA, COLHEITA_ESP,
     ID_SEMENTE, ID_SEMENTE_ESP, ID_MUDA,
     ID_COLHEITA, ID_COLHEITA_ESP, ID_MADEIRA,
     COLS_LAGO, LINHAS_LAGO, COLS_PIER, LINHAS_PIER, COL_PESCAR,
     RET_CASA, RET_ESTABULO, RET_GALINHEIRO,
-    COR_PIER,
     TEMPO_SEMENTE, TEMPO_ESPECIAL, TEMPO_MUDA,
     ESTABULO_QUEBRADO, ESTABULO_FIXO, GALINHEIRO_QUEBRADO, GALINHEIRO_FIXO,
     SPAWN_X, SPAWN_Y,
@@ -19,14 +18,17 @@ from src.constants import (
 from src import assets as RECURSOS
 from src.entities import Jogador, atualizar_animais, desenhar_animais
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # Conjuntos de tiles especiais
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 TILES_LAGO   = frozenset((c, r) for c in COLS_LAGO   for r in LINHAS_LAGO)
 TILES_PIER   = frozenset((c, r) for c in COLS_PIER   for r in LINHAS_PIER
                           if c != COL_PESCAR)
 TILES_PESCA  = frozenset((COL_PESCAR, r) for r in LINHAS_PIER)
 TILES_AGUA   = TILES_LAGO | TILES_PIER | TILES_PESCA
+
+# Tamanho da quina de agua em pixels
+QUINA_TAM = 52 
 
 
 def _tiles_predio(col, lin, larg, alt):
@@ -43,9 +45,9 @@ def _tiles_para_pixels(col, lin, larg, alt):
     return pygame.Rect(col * TAM_TILE, lin * TAM_TILE, larg * TAM_TILE, alt * TAM_TILE)
 
 
-RET_PX_CASA       = _tiles_para_pixels(*RET_CASA)         # Rect em pixels da casa
-RET_PX_ESTABULO   = _tiles_para_pixels(*RET_ESTABULO)     # Rect em pixels do estábulo
-RET_PX_GALINHEIRO = _tiles_para_pixels(*RET_GALINHEIRO)   # Rect em pixels do galinheiro
+RET_PX_CASA       = _tiles_para_pixels(*RET_CASA)         
+RET_PX_ESTABULO   = _tiles_para_pixels(*RET_ESTABULO)     
+RET_PX_GALINHEIRO = _tiles_para_pixels(*RET_GALINHEIRO)   
 
 # Caixa de venda (canto superior direito)
 CAIXA_VENDA = pygame.Rect(COLUNAS * TAM_TILE - 90, 10, 80, 34)
@@ -64,18 +66,18 @@ def _criar_paredes(ret, larg_porta):
     esq_porta  = x + w // 2 - larg_porta // 2
     dir_porta  = esq_porta + larg_porta
     return [
-        pygame.Rect(x,     y,     w,             4),    # norte
-        pygame.Rect(x,     y,     4,             h),    # oeste
-        pygame.Rect(x+w-4, y,     4,             h),    # leste
-        pygame.Rect(x,     y+h-4, esq_porta - x, 4),   # sul-esquerda
-        pygame.Rect(dir_porta, y+h-4, x+w-dir_porta, 4), # sul-direita
+        pygame.Rect(x,     y,     w,             4),    
+        pygame.Rect(x,     y,     4,             h),   
+        pygame.Rect(x+w-4, y,     4,             h),    
+        pygame.Rect(x,     y+h-4, esq_porta - x, 4),  
+        pygame.Rect(dir_porta, y+h-4, x+w-dir_porta, 4), 
     ]
 
 
 def _criar_paredes_casa():
     r  = RET_PX_CASA
     x, y, w, h = r.x, r.y, r.width, r.height
-    larg_porta = 40
+    larg_porta = 60
     esq_porta  = x + 68 - larg_porta // 2   # porta ~68px da esquerda no sprite
     dir_porta  = esq_porta + larg_porta
     return [
@@ -88,8 +90,8 @@ def _criar_paredes_casa():
 
 
 PAREDES_CASA       = _criar_paredes_casa()
-PAREDES_ESTABULO   = _criar_paredes(RET_PX_ESTABULO,   56)
-PAREDES_GALINHEIRO = _criar_paredes(RET_PX_GALINHEIRO, 36)
+PAREDES_ESTABULO   = _criar_paredes(RET_PX_ESTABULO,   80)
+PAREDES_GALINHEIRO = _criar_paredes(RET_PX_GALINHEIRO, 56)
 
 
 def _inicializar_mapa():
@@ -101,26 +103,10 @@ def _inicializar_mapa():
     return grade
 
 
-def _gerar_rachaduras(ret: pygame.Rect, qtd: int):
-    """Gera rachaduras aleatórias (mas fixas) para prédios quebrados."""
-    rachaduras = []
-    random.seed(ret.x + ret.y)
-    for _ in range(qtd):
-        x1 = random.randint(ret.x + 6, ret.right - 6)
-        dx = random.randint(-12, 12)
-        dy = ret.height // 3
-        rachaduras.append((x1, ret.y + dy, x1 + dx, ret.y + dy * 2))
-    random.seed()
-    return rachaduras
 
 
-RACHADURAS_ESTABULO   = _gerar_rachaduras(RET_PX_ESTABULO,   4)
-RACHADURAS_GALINHEIRO = _gerar_rachaduras(RET_PX_GALINHEIRO, 3)
-
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # EstadoFazenda
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 class EstadoFazenda(EstadoBase):
     def __init__(self, dados_jogo):
         self.gd  = dados_jogo
@@ -142,9 +128,9 @@ class EstadoFazenda(EstadoBase):
 
         dados_jogo.ultimo_mapa = 'fazenda'
 
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 
     # Processar eventos
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
     def processar_eventos(self, eventos: list):
         # Repassa eventos para o diálogo se estiver aberto
         if self.dialogo:
@@ -220,9 +206,8 @@ class EstadoFazenda(EstadoBase):
 
         return self
 
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     # Ações do jogador
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
     def _perto_da_cama(self) -> bool:
         return RET_CAMA.inflate(30, 30).colliderect(self.jog.obter_ret())
 
@@ -236,6 +221,7 @@ class EstadoFazenda(EstadoBase):
             jog.y       = float(SPAWN_Y)
             jog.pescando = False
             jog.direcao  = 'baixo'
+        self.gd.salvar()   # salva ao dormir
         from src.states import EstadoDesmaio
         return EstadoDesmaio(self.gd)
 
@@ -276,14 +262,13 @@ class EstadoFazenda(EstadoBase):
 
     def _tentar_colher(self, col, lin):
         if not self._tile_valido(col, lin): return
-        tile  = self.mapa[lin][col]
-        idade = pygame.time.get_ticks() - self.tp.get((col, lin), pygame.time.get_ticks())
-        if tile == SEMENTE and idade >= TEMPO_SEMENTE:
+        tile = self.mapa[lin][col]
+        if tile == COLHEITA:
             self.mapa[lin][col]   = SOLO
             self.inv.colheita    += 1
             del self.tp[(col, lin)]
             RECURSOS.tocar_som('colher', 'plantas', self.cfg.volumes)
-        elif tile == SEMENTE_ESP and idade >= TEMPO_ESPECIAL:
+        elif tile == COLHEITA_ESP:
             self.mapa[lin][col]   = SOLO
             self.inv.colheita_esp += 1
             del self.tp[(col, lin)]
@@ -314,9 +299,9 @@ class EstadoFazenda(EstadoBase):
         if (col, lin) in TILES_AGUA:                        return False
         return True
 
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
     # Atualização por frame
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 
     def atualizar(self):
         teclas_press = pygame.key.get_pressed()
         colisoes     = self._colisoes()
@@ -330,14 +315,17 @@ class EstadoFazenda(EstadoBase):
         if self.jog.x > (COLUNAS - 1) * TAM_TILE - 8:
             self.jog.x = 300.0
             self.jog.y = 300.0
+            self.gd.salvar()   # salva ao entrar na cidade
             from src.town_state import EstadoCidade
             return EstadoCidade(self.gd)
 
         # Muda crescida em árvore
         agora = pygame.time.get_ticks()
         for (c, l), t in list(self.tp.items()):
-            if self.mapa[l][c] == MUDA and agora - t >= TEMPO_MUDA:
-                self.mapa[l][c] = ARVORE
+            tile = self.mapa[l][c]
+            if tile == SEMENTE     and agora - t >= TEMPO_SEMENTE:  self.mapa[l][c] = COLHEITA
+            elif tile == SEMENTE_ESP and agora - t >= TEMPO_ESPECIAL: self.mapa[l][c] = COLHEITA_ESP
+            elif tile == MUDA        and agora - t >= TEMPO_MUDA:     self.mapa[l][c] = ARVORE
 
         # Atualiza animais
         atualizar_animais(self.gd.animais)
@@ -356,6 +344,8 @@ class EstadoFazenda(EstadoBase):
     def _verificar_hora(self):
         """Verifica se chegou meia-noite ou horário de ficar cansado."""
         if self.hor.eh_meia_noite():
+            self.gd.horario.reiniciar_dia()
+            self.gd.salvar()   # salva ao ser forçado a dormir
             from src.states import EstadoDesmaio
             return EstadoDesmaio(self.gd)
         if self.hor.hora_cansado() and not self.hor.notificado_cansado:
@@ -377,9 +367,9 @@ class EstadoFazenda(EstadoBase):
     def _dentro_galinheiro(self):
         return RET_PX_GALINHEIRO.inflate(-6, -6).colliderect(self.jog.obter_ret())
 
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
     # Desenho
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   
     def desenhar(self, tela: pygame.Surface):
         largura, altura = tela.get_size()
         fonte_p = FONTES.get('pequena', pygame.font.SysFont('arial', 14))
@@ -387,7 +377,25 @@ class EstadoFazenda(EstadoBase):
         fonte_g = FONTES.get('grande',  pygame.font.SysFont('arial', 28, bold=True))
         agora   = pygame.time.get_ticks()
 
-        # ── Tiles do mapa ────────────────────────────────────────
+        def _agua_base(rx, ry, col, lin):
+            onda = math.sin(self._tick_agua * 0.05 + col * 0.5 + lin * 0.3)
+            nv   = int(onda * 10)
+            sa   = RECURSOS.obter_imagem('tile_agua', (TAM_TILE, TAM_TILE)).copy()
+            if nv != 0:
+                t = pygame.Surface((TAM_TILE, TAM_TILE), pygame.SRCALPHA)
+                v = max(0, min(30, nv + 15))
+                t.fill((0, v, v, 0))
+                sa.blit(t, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+            tela.blit(sa, (rx, ry))
+
+        _grama  = RECURSOS.obter_imagem('tile_grama',       (TAM_TILE, TAM_TILE))
+        _bc     = RECURSOS.obter_imagem('agua_borda_cima',  (TAM_TILE, TAM_TILE))
+        _bb     = RECURSOS.obter_imagem('agua_borda_baixo', (TAM_TILE, TAM_TILE))
+        _be     = RECURSOS.obter_imagem('agua_borda_esq',   (TAM_TILE, TAM_TILE))
+        _bd     = RECURSOS.obter_imagem('agua_borda_dir',   (TAM_TILE, TAM_TILE))
+        _bq     = RECURSOS.obter_imagem('agua_quina',       (TAM_TILE, TAM_TILE))
+
+        # Tiles do mapa
         for lin in range(LINHAS):
             for col in range(COLUNAS):
                 rx, ry = col * TAM_TILE, lin * TAM_TILE
@@ -395,38 +403,42 @@ class EstadoFazenda(EstadoBase):
                 tile   = self.mapa[lin][col]
 
                 if pos in TILES_PESCA or pos in TILES_PIER:
-                    # Fundo de madeira
-                    pygame.draw.rect(tela, COR_PIER, (rx, ry, TAM_TILE, TAM_TILE))
-                    # Bridge_Wood original 38x30 — mantém proporção, centraliza no tile
-                    bw, bh = 38, 30
-                    sx = rx + (TAM_TILE - bw) // 2
-                    sy = ry + (TAM_TILE - bh) // 2
-                    tela.blit(RECURSOS.obter_imagem('tile_pier', (bw, bh)), (sx, sy))
+                    if pos in TILES_LAGO:
+                        _agua_base(rx, ry, col, lin)
+                        if (col-1, lin) not in TILES_LAGO:
+                            tela.blit(_be, (rx, ry))
+                    else:
+                        tela.blit(_grama, (rx, ry))
                     if pos in TILES_PESCA:
                         pygame.draw.circle(tela, (80, 200, 255),
-                                           (rx + TAM_TILE // 2, ry + TAM_TILE // 2), 6)
+                                           (rx + TAM_TILE//2, ry + TAM_TILE//2), 6)
 
                 elif pos in TILES_LAGO:
-                    # Água: sprite base animado por deslocamento de cor
-                    onda  = math.sin(self._tick_agua * 0.05 + col * 0.5 + lin * 0.3)
-                    nv    = int(onda * 10)
-                    surf_agua = RECURSOS.obter_imagem('tile_agua', (TAM_TILE, TAM_TILE)).copy()
-                    if nv != 0:
-                        tint = pygame.Surface((TAM_TILE, TAM_TILE), pygame.SRCALPHA)
-                        v    = max(0, min(30, nv + 15))
-                        tint.fill((0, v, v, 0))
-                        surf_agua.blit(tint, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
-                    tela.blit(surf_agua, (rx, ry))
+                    _agua_base(rx, ry, col, lin)
 
-                    # Bordas de transição
-                    acima  = (col, lin-1)
-                    abaixo = (col, lin+1)
-                    esq    = (col-1, lin)
-                    dir_   = (col+1, lin)
-                    if acima  not in TILES_LAGO: tela.blit(RECURSOS.obter_imagem('agua_borda_cima',  (TAM_TILE, TAM_TILE)), (rx, ry))
-                    if abaixo not in TILES_LAGO: tela.blit(RECURSOS.obter_imagem('agua_borda_baixo', (TAM_TILE, TAM_TILE)), (rx, ry))
-                    if esq    not in TILES_LAGO: tela.blit(RECURSOS.obter_imagem('agua_borda_esq',   (TAM_TILE, TAM_TILE)), (rx, ry))
-                    if dir_   not in TILES_LAGO: tela.blit(RECURSOS.obter_imagem('agua_borda_dir',   (TAM_TILE, TAM_TILE)), (rx, ry))
+                    tc = (col, lin-1) not in TILES_LAGO
+                    tb = (col, lin+1) not in TILES_LAGO
+                    te = (col-1, lin) not in TILES_LAGO
+                    td = (col+1, lin) not in TILES_LAGO
+
+                    if tc: tela.blit(_bc, (rx, ry))
+                    if tb: tela.blit(_bb, (rx, ry))
+                    if te: tela.blit(_be, (rx, ry))
+                    if td: tela.blit(_bd, (rx, ry))
+
+                    if tc and te and (col-1, lin-1) not in TILES_LAGO:
+                        q = pygame.transform.scale(_bq, (QUINA_TAM, QUINA_TAM))
+                        tela.blit(q, (rx, ry))
+                    if tc and td and (col+1, lin-1) not in TILES_LAGO:
+                        q = pygame.transform.scale(pygame.transform.flip(_bq, True, False), (QUINA_TAM, QUINA_TAM))
+                        tela.blit(q, (rx + TAM_TILE - QUINA_TAM, ry))
+                    if tb and te and (col-1, lin+1) not in TILES_LAGO:
+                        q = pygame.transform.scale(pygame.transform.flip(_bq, False, True), (QUINA_TAM, QUINA_TAM))
+                        tela.blit(q, (rx, ry + TAM_TILE - QUINA_TAM))
+                    if tb and td and (col+1, lin+1) not in TILES_LAGO:
+                        q = pygame.transform.scale(pygame.transform.flip(_bq, True, True), (QUINA_TAM, QUINA_TAM))
+                        tela.blit(q, (rx + TAM_TILE - QUINA_TAM, ry + TAM_TILE - QUINA_TAM))
+
 
                 else:
                     # ── Grama base para tudo ──
@@ -453,6 +465,18 @@ class EstadoFazenda(EstadoBase):
                         pygame.draw.rect(tela, (200, 80, 220),
                                          (rx, ry + TAM_TILE - 5, int(TAM_TILE * pct), 4))
 
+                    elif tile == COLHEITA:
+                        tela.blit(RECURSOS.obter_imagem('tile_solo',     (TAM_TILE, TAM_TILE)), (rx, ry))
+                        sp = RECURSOS.obter_imagem('colheita', (TAM_TILE - 4, TAM_TILE - 4))
+                        tela.blit(sp, (rx + 2, ry + 2))
+                        pygame.draw.rect(tela, (255, 220, 30), (rx, ry, TAM_TILE, TAM_TILE), 2)
+
+                    elif tile == COLHEITA_ESP:
+                        tela.blit(RECURSOS.obter_imagem('tile_solo',         (TAM_TILE, TAM_TILE)), (rx, ry))
+                        sp = RECURSOS.obter_imagem('colheita_esp', (TAM_TILE - 4, TAM_TILE - 4))
+                        tela.blit(sp, (rx + 2, ry + 2))
+                        pygame.draw.rect(tela, (180, 60, 220), (rx, ry, TAM_TILE, TAM_TILE), 2)
+
                     elif tile == MUDA:
                         # Muda pequena sobre grama
                         sp  = RECURSOS.obter_imagem('tile_muda', (TAM_TILE - 14, TAM_TILE - 6))
@@ -462,12 +486,24 @@ class EstadoFazenda(EstadoBase):
                                          (rx, ry + TAM_TILE - 5, int(TAM_TILE * pct), 4))
 
                     elif tile == ARVORE:
-                        # Árvore ocupa o tile inteiro (sprite maior, centralizado)
-                        sw, sh = TAM_TILE + 4, TAM_TILE + 10
+                        sw, sh = 44, 72
                         sp = RECURSOS.obter_imagem('tile_arvore', (sw, sh))
-                        tela.blit(sp, (rx - 2, ry - 10))
+                        tela.blit(sp, (rx - 2, ry - 32))
 
-        # ── Prédios ──────────────────────────────────────────────
+        # Ponte: um sprite por coluna cobrindo as 2 linhas do pier
+        lin_topo = min(LINHAS_PIER)
+        bw = 38
+        bh = len(LINHAS_PIER) * TAM_TILE
+        surf_pier = RECURSOS.obter_imagem('tile_pier', (bw, bh))
+        todas_cols_pier = set(c for (c, r) in TILES_PIER | TILES_PESCA)
+        for cp in sorted(todas_cols_pier):
+            px = cp * TAM_TILE + (TAM_TILE - bw) // 2
+            py = lin_topo * TAM_TILE
+            tela.blit(surf_pier, (px, py))
+            if (cp, lin_topo) in TILES_PESCA or (cp, lin_topo+1) in TILES_PESCA:
+                pygame.draw.circle(tela, (80, 200, 255),
+                                   (cp * TAM_TILE + TAM_TILE//2, py + bh//2), 6)
+
         self._desenhar_casa(tela, fonte_p)
         self._desenhar_estabulo(tela, fonte_p)
         self._desenhar_galinheiro(tela, fonte_p)
@@ -477,11 +513,11 @@ class EstadoFazenda(EstadoBase):
         if self._dentro_casa:
             self._desenhar_interior_casa(tela)
         if self._dentro_estabulo:
-            self._desenhar_piso_interior(tela, RET_PX_ESTABULO, (155, 125, 82))
+            self._desenhar_interior_estabulo(tela)
             vacas = [a for a in self.gd.animais if a['tipo'] == 'vaca']
             desenhar_animais(tela, vacas)
         if self._dentro_galinheiro:
-            self._desenhar_piso_interior(tela, RET_PX_GALINHEIRO, (195, 172, 118))
+            self._desenhar_interior_galinheiro(tela)
             galinhas = [a for a in self.gd.animais if a['tipo'] == 'galinha']
             desenhar_animais(tela, galinhas)
 
@@ -614,13 +650,7 @@ class EstadoFazenda(EstadoBase):
         r = RET_PX_CASA
         x, y, w, h = r.x, r.y, r.width, r.height
 
-        # Sombra
-        ss = pygame.Surface((w+8, h+8), pygame.SRCALPHA)
-        ss.fill((0, 0, 0, 90))
-        tela.blit(ss, (x+5, y+5))
-
-        # Sprite da casa escalado para a área do prédio
-        # Casa original: 75x115, área do prédio: 4×3 tiles = 160×120
+        # Sprite da casa escalado para a area do predio
         surf_casa = RECURSOS.obter_imagem('casa', (w, h))
         tela.blit(surf_casa, (x, y))
 
@@ -635,72 +665,15 @@ class EstadoFazenda(EstadoBase):
         r = RET_PX_ESTABULO
         x, y, w, h = r.x, r.y, r.width, r.height
         quebrado   = self.gd.predios.get(ESTABULO_QUEBRADO) == ESTABULO_QUEBRADO
-        parede_y   = y + h // 4
 
-        cw  = (112, 68, 32)  if quebrado else (138, 88, 44)
-        ct  = (78, 48, 22)   if quebrado else (92, 56, 25)
-        ctb = (95, 56, 22)   if quebrado else (118, 74, 36)
-
-        # Sombra
-        ss = pygame.Surface((w+8, h+8), pygame.SRCALPHA)
-        ss.fill((0, 0, 0, 95))
-        tela.blit(ss, (x+6, y+6))
-
-        # Paredes (tábuas verticais — estilo celeiro)
-        pygame.draw.rect(tela, cw, (x, parede_y, w, h - h//4))
-        for px3 in range(x, x+w+1, 16):
-            pygame.draw.line(tela, ctb, (px3, parede_y), (px3, y+h), 1)
-        for py3 in range(parede_y+10, y+h, 22):
-            cor3 = (max(0, cw[0]-12), max(0, cw[1]-8), max(0, cw[2]-4))
-            pygame.draw.line(tela, cor3, (x, py3), (x+w, py3), 1)
-
-        # Cruzes diagonais estilo celeiro
-        brace  = (max(0, cw[0]-18), max(0, cw[1]-12), max(0, cw[2]-8))
-        mid_x  = x + w // 2
-        pygame.draw.line(tela, brace, (x+4, parede_y+4), (mid_x-4, y+h-30), 2)
-        pygame.draw.line(tela, brace, (mid_x-4, parede_y+4), (x+4, y+h-30), 2)
-        pygame.draw.line(tela, brace, (mid_x+4, parede_y+4), (x+w-4, y+h-30), 2)
-        pygame.draw.line(tela, brace, (x+w-4, parede_y+4), (mid_x+4, y+h-30), 2)
-
-        # Telhado duas águas
-        pts_t = [(x-5, parede_y+2), (x+w//2, y+3), (x+w+5, parede_y+2)]
-        pygame.draw.polygon(tela, ct, pts_t)
-        ctd = (max(0,ct[0]-18), max(0,ct[1]-12), max(0,ct[2]-8))
-        for i in range(5, 32, 6):
-            fr   = i / 32
-            ry2  = int(y + 4 + (parede_y - y - 4) * fr)
-            rx1  = int((x-5) + i*(w//2+5)/32)
-            rx2  = int((x+w+5) - i*(w//2+5)/32)
-            pygame.draw.line(tela, ctd, (rx1, ry2), (rx2, ry2), 2)
-
-        # Porta dupla
-        dw2  = 56
-        dx2  = x + w//2 - dw2//2
-        dyd2 = y + h - 54
-        for px4, pw4 in [(dx2, dw2//2-1), (dx2+dw2//2+1, dw2//2-1)]:
-            pygame.draw.rect(tela, (68, 40, 16), (px4, dyd2, pw4, 54))
-            pygame.draw.rect(tela, (48, 28, 8),  (px4, dyd2, pw4, 54), 2)
-            pygame.draw.line(tela, (48, 28, 8), (px4+2, dyd2+2), (px4+pw4-2, dyd2+50), 1)
-            pygame.draw.line(tela, (48, 28, 8), (px4+pw4-2, dyd2+2), (px4+2, dyd2+50), 1)
-        pygame.draw.rect(tela, (210, 182, 66), (dx2+4, dyd2+36, dw2-8, 16))
-
-        # Janelas altas
-        for wx2 in [x+8, x+w-28]:
-            wy2 = parede_y + 14
-            pygame.draw.rect(tela, (180, 212, 242), (wx2, wy2, 20, 15))
-            pygame.draw.line(tela, (120, 152, 182), (wx2+10, wy2), (wx2+10, wy2+15), 1)
-
-        # Lanterna acima da porta
-        lx3 = x + w//2
-        ly2 = parede_y + 6
-        pygame.draw.line(tela, (80, 55, 25), (lx3, ly2), (lx3, ly2+12), 2)
-        pygame.draw.rect(tela, (78, 78, 48), (lx3-5, ly2+12, 10, 12))
-        pygame.draw.rect(tela, (255, 222, 100), (lx3-3, ly2+14, 6, 8))
-
-        # Rachaduras se quebrado
+        # Sprite do celeiro (barn) escalado para a area do predio
+        surf_barn = RECURSOS.obter_imagem('estabulo', (w, h))
         if quebrado:
-            for x1, y1, x2, y2 in RACHADURAS_ESTABULO:
-                pygame.draw.line(tela, (44, 28, 14), (x1, y1), (x2, y2), 2)
+            surf_barn = surf_barn.copy()
+            escurece = pygame.Surface((w, h), pygame.SRCALPHA)
+            escurece.fill((60, 30, 10, 100))
+            surf_barn.blit(escurece, (0, 0), special_flags=pygame.BLEND_RGBA_SUB)
+        tela.blit(surf_barn, (x, y))
 
         label  = 'Estábulo' + (' (quebrado)' if quebrado else '')
         cor_l  = (230, 140, 70) if quebrado else (255, 222, 172)
@@ -714,53 +687,15 @@ class EstadoFazenda(EstadoBase):
         r = RET_PX_GALINHEIRO
         x, y, w, h = r.x, r.y, r.width, r.height
         quebrado   = self.gd.predios.get(GALINHEIRO_QUEBRADO) == GALINHEIRO_QUEBRADO
-        parede_y   = y + h // 3
 
-        cw  = (168, 140, 92) if not quebrado else (140, 115, 70)
-        ct  = (145, 98, 44)  if not quebrado else (115, 72, 30)
-        ctb = (148, 122, 78) if not quebrado else (122, 98, 58)
-
-        # Sombra
-        ss = pygame.Surface((w+6, h+6), pygame.SRCALPHA)
-        ss.fill((0, 0, 0, 65))
-        tela.blit(ss, (x+4, y+4))
-
-        # Paredes (madeira mais clara)
-        pygame.draw.rect(tela, cw, (x, parede_y, w, h - h//3))
-        for py4 in range(parede_y+6, y+h, 8):
-            pygame.draw.line(tela, ctb, (x, py4), (x+w, py4), 1)
-
-        # Telhado pontiagudo
-        pts_t2 = [(x-4, parede_y+2), (x+w//2, y+2), (x+w+4, parede_y+2)]
-        pygame.draw.polygon(tela, ct, pts_t2)
-        ctd2 = (max(0,ct[0]-22), max(0,ct[1]-18), max(0,ct[2]-10))
-        for i in range(4, 24, 5):
-            fr   = i / 24
-            ry3  = int(y + 3 + (parede_y - y - 3) * fr)
-            rx3  = int((x-4) + i*(w//2+4)/24)
-            rx4  = int((x+w+4) - i*(w//2+4)/24)
-            pygame.draw.line(tela, ctd2, (rx3, ry3), (rx4, ry3), 1)
-
-        # Tela de arame
-        for mx2 in range(x+4, x+w-4, 6):
-            pygame.draw.line(tela, (155, 132, 88), (mx2, parede_y+4), (mx2, y+h-4), 1)
-
-        # Porta pequena
-        sdw, sdh = 18, 22
-        sdx  = x + w//2 - sdw//2
-        sdy  = y + h - sdh
-        pygame.draw.rect(tela, (102, 72, 36), (sdx, sdy, sdw, sdh))
-        pygame.draw.rect(tela, (78, 52, 22),  (sdx, sdy, sdw, sdh), 1)
-
-        # Janela lateral
-        wy3 = parede_y + 14
-        pygame.draw.rect(tela, (182, 218, 252), (x+w-28, wy3, 18, 14))
-        pygame.draw.line(tela, (122, 158, 192), (x+w-19, wy3), (x+w-19, wy3+14), 1)
-
-        # Rachaduras se quebrado
+        # Usa o sprite de casa como galinheiro (escalonado para a area)
+        surf_gal = RECURSOS.obter_imagem('casa', (w, h))
         if quebrado:
-            for x1b, y1b, x2b, y2b in RACHADURAS_GALINHEIRO:
-                pygame.draw.line(tela, (40, 28, 14), (x1b, y1b), (x2b, y2b), 2)
+            surf_gal = surf_gal.copy()
+            escurece = pygame.Surface((w, h), pygame.SRCALPHA)
+            escurece.fill((60, 30, 10, 100))
+            surf_gal.blit(escurece, (0, 0), special_flags=pygame.BLEND_RGBA_SUB)
+        tela.blit(surf_gal, (x, y))
 
         label  = 'Galinheiro' + (' (quebrado)' if quebrado else '')
         cor_l  = (230, 140, 70) if quebrado else (255, 232, 188)
@@ -816,13 +751,23 @@ class EstadoFazenda(EstadoBase):
         pygame.draw.rect(tela, (238, 232, 212), (tx+8, ty-8, 5, 8))
         pygame.draw.circle(tela, (255, 200, 50), (tx+10, ty-10), 3)
 
+    def _desenhar_interior_estabulo(self, tela):
+        r = RET_PX_ESTABULO
+        piso = pygame.Surface((r.width, r.height), pygame.SRCALPHA)
+        piso.fill((180, 148, 95, 218))
+        for fy in range(0, r.height, 12):
+            pygame.draw.line(piso, (160, 130, 80), (0, fy), (r.width, fy), 1)
+        tela.blit(piso, (r.x, r.y))
+        pygame.draw.rect(tela, (155, 125, 80), (r.x, r.y, r.width, 18))
+
+    def _desenhar_interior_galinheiro(self, tela):
+        r = RET_PX_GALINHEIRO
+        piso = pygame.Surface((r.width, r.height), pygame.SRCALPHA)
+        piso.fill((210, 188, 130, 218))
+        for fy in range(0, r.height, 12):
+            pygame.draw.line(piso, (190, 168, 110), (0, fy), (r.width, fy), 1)
+        tela.blit(piso, (r.x, r.y))
+        pygame.draw.rect(tela, (190, 165, 105), (r.x, r.y, r.width, 18))
+
     def _desenhar_piso_interior(self, tela, ret, cor_piso):
-        """Piso simples para estábulo/galinheiro."""
-        piso = pygame.Surface((ret.width, ret.height), pygame.SRCALPHA)
-        piso.fill((*cor_piso, 198))
-        for fy in range(0, ret.height, 10):
-            cor_linha = (max(0, cor_piso[0]-18), max(0, cor_piso[1]-15), max(0, cor_piso[2]-10))
-            pygame.draw.line(piso, cor_linha, (0, fy), (ret.width, fy), 1)
-        tela.blit(piso, (ret.x, ret.y))
-        cor_topo = (max(0, cor_piso[0]-25), max(0, cor_piso[1]-20), max(0, cor_piso[2]-15))
-        pygame.draw.rect(tela, cor_topo, (ret.x, ret.y, ret.width, 14))
+        pass

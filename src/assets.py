@@ -1,6 +1,3 @@
-"""
-assets.py — Gerenciador de recursos visuais e sonoros.
-"""
 import pygame
 import os
 
@@ -15,9 +12,9 @@ _ANIMAIS = os.path.join(DIR_IMAGENS, 'animais')
 _PLANTAS = os.path.join(DIR_IMAGENS, 'plantas')
 _PREDIOS = os.path.join(DIR_IMAGENS, 'predios')
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # Mapeamento chave → arquivo
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 CAMINHOS_IMG = {
     # Jogador — 4 direcoes
     'jogador_down':  os.path.join(_JOGADOR, 'Player_down_15-20.png'),
@@ -40,6 +37,7 @@ CAMINHOS_IMG = {
     'agua_borda_baixo': os.path.join(_TILES, 'Water_down_borda_16-16.png'),
     'agua_borda_esq':   os.path.join(_TILES, 'Water_left_borda_16-16.png'),
     'agua_borda_dir':   os.path.join(_TILES, 'Water_right_borda_16-16.png'),
+    'agua_quina':       os.path.join(_TILES, 'Water_quina_16-16.png'),
 
     # Chao da cidade
     'chao_cidade': os.path.join(_TILES, 'Path_Middle_16-16.png'),
