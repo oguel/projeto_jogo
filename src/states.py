@@ -3,12 +3,11 @@ import math
 
 from src.constants import SPAWN_X, SPAWN_Y
 
-# Dicionário global de fontes — inicializado em jogo.py
+# Dicionario global de fontes - inicializado em jogo.py
 FONTES: dict = {}
 
 
 def inicializar_fontes():
-    """Carrega e armazena as fontes do jogo na memória."""
     global FONTES
     FONTES = {
         'titulo':  pygame.font.SysFont('arial', 56, bold=True),
@@ -16,7 +15,6 @@ def inicializar_fontes():
         'normal':  pygame.font.SysFont('arial', 20),
         'pequena': pygame.font.SysFont('arial', 14),
     }
-
 
 
 class EstadoBase:
@@ -33,93 +31,44 @@ class EstadoBase:
 class EstadoTitulo(EstadoBase):
     def __init__(self, dados_jogo):
         self.gd      = dados_jogo
-        self.tick    = 0
-        self.estrelas = [(x % 800, (x * 7) % 600) for x in range(0, 20_000, 137)]
 
     def processar_eventos(self, eventos):
         for evento in eventos:
             if evento.type == pygame.KEYDOWN:
                 if evento.key in (pygame.K_RETURN, pygame.K_SPACE):
+                    from src.assets import tocar_som
+                    tocar_som('tecla', self.gd.configuracao.volumes)
                     return EstadoIntro(self.gd)
+                elif evento.key == pygame.K_ESCAPE:
+                    from src.assets import tocar_som
+                    tocar_som('tecla', self.gd.configuracao.volumes)
+                    from src.settings_state import EstadoConfiguracoes
+                    return EstadoConfiguracoes(self.gd, self)
             elif evento.type == pygame.MOUSEBUTTONDOWN:
+                from src.assets import tocar_som
+                tocar_som('tecla', self.gd.configuracao.volumes)
                 return EstadoIntro(self.gd)
         return self
 
     def desenhar(self, tela: pygame.Surface):
-        self.tick += 1
         largura, altura = tela.get_size()
 
-        # Fundo: gradiente de céu noturno
-        for linha_y in range(altura):
-            p = linha_y / altura
-            pygame.draw.line(tela,
-                (int(5 + p * 15), int(8 + p * 20), int(35 + p * 40)),
-                (0, linha_y), (largura, linha_y))
-
-        # Estrelas cintilando
-        for i, (ex, ey) in enumerate(self.estrelas):
-            piscar = math.sin(self.tick * 0.04 + i * 0.31)
-            alfa   = max(0, min(255, int(100 + piscar * 155)))
-            tam    = 1 + (i % 3 == 0)
-            s      = pygame.Surface((tam * 2 + 1, tam * 2 + 1), pygame.SRCALPHA)
-            s.fill((0, 0, 0, 0))
-            pygame.draw.circle(s, (255, 255, 255), (tam, tam), tam)
-            s.set_alpha(alfa)
-            tela.blit(s, (ex - tam, ey - tam))
-
-        # Lua flutuando
-        lua_y = int(70 + 12 * math.sin(self.tick * 0.008))
-        pygame.draw.circle(tela, (238, 238, 180), (largura - 120, lua_y), 38)
-        pygame.draw.circle(tela, (8, 18, 55),     (largura - 108, lua_y - 6), 30)
-
-        # Árvores silhueta
-        for tx in [40, 110, 190, 560, 660, 740]:
-            pygame.draw.rect(tela, (8, 40, 8), (tx, altura - 160, 18, 65))
-            pygame.draw.polygon(tela, (10, 55, 10), [
-                (tx+9, altura-205), (tx-22, altura-140), (tx+40, altura-140)])
-
-        # Casa silhueta
-        cx = largura // 2
-        pygame.draw.rect(tela, (70, 35, 18), (cx-60, altura-160, 120, 65))
-        pygame.draw.polygon(tela, (110, 25, 25), [
-            (cx-70, altura-160), (cx, altura-210), (cx+70, altura-160)])
-        brilho = int(200 + 55 * math.sin(self.tick * 0.025))
-        pygame.draw.rect(tela, (brilho, brilho, 40), (cx-50, altura-148, 22, 22))
-        pygame.draw.rect(tela, (brilho, brilho, 40), (cx+28, altura-148, 22, 22))
-
-        # Grama
-        pygame.draw.rect(tela, (12, 75, 18), (0, altura - 100, largura, 100))
-
-        # Título
-        fonte_t  = FONTES.get('titulo', pygame.font.SysFont('arial', 56, bold=True))
-        sombra   = fonte_t.render('FAZENDA', True, (100, 80, 0))
-        titulo   = fonte_t.render('FAZENDA', True, (255, 230, 80))
-        larg_t   = titulo.get_width()
-        tela.blit(sombra, (largura // 2 - larg_t // 2 + 3, 83))
-        tela.blit(titulo, (largura // 2 - larg_t // 2, 80))
-
-        fonte_g  = FONTES.get('grande', pygame.font.SysFont('arial', 32, bold=True))
-        subtitulo = fonte_g.render('Vida no Campo', True, (160, 240, 160))
-        tela.blit(subtitulo, (largura // 2 - subtitulo.get_width() // 2, 155))
-
-        pulso   = int(255 * (0.65 + 0.35 * math.sin(self.tick * 0.07)))
-        fonte_n = FONTES.get('normal', pygame.font.SysFont('arial', 20))
-        botao   = fonte_n.render('Pressione ENTER  ou  clique para começar', True, (pulso, pulso, pulso))
-        tela.blit(botao, (largura // 2 - botao.get_width() // 2, altura - 70))
+        from src.assets import obter_imagem
+        img = obter_imagem('titlescreen', (largura, altura))
+        tela.blit(img, (0, 0))
 
         fonte_p = FONTES.get('pequena', pygame.font.SysFont('arial', 14))
-        versao  = fonte_p.render('v0.4  •  ESC = Configurações', True, (70, 70, 70))
+        versao  = fonte_p.render('v0.4  |  ESC = Configuracoes', True, (220, 220, 220))
         tela.blit(versao, (8, altura - 22))
-
 
 
 class EstadoIntro(EstadoBase):
     SLIDES = [
-        "Uma antiga fazenda está sendo leiloada...",
-        "Você decide participar do leilão...",
-        "Você venceu o leilão!",
-        "A fazenda agora é sua!",
-        "Boa sorte, fazendeiro!",
+        'Uma antiga fazenda esta sendo leiloada...',
+        'Voce decide participar do leilao...',
+        'Voce venceu o leilao!',
+        'A fazenda agora e sua!',
+        'Boa sorte, fazendeiro!',
     ]
 
     def __init__(self, dados_jogo):
@@ -138,9 +87,9 @@ class EstadoIntro(EstadoBase):
 
     def _iniciar_jogo(self):
         from src.entities import Jogador
-        jogador     = Jogador()
-        jogador.x   = float(SPAWN_X)
-        jogador.y   = float(SPAWN_Y)
+        jogador   = Jogador()
+        jogador.x = float(SPAWN_X)
+        jogador.y = float(SPAWN_Y)
         self.gd.jogador = jogador
         from src.farm_state import EstadoFazenda
         return EstadoFazenda(self.gd)
@@ -163,13 +112,14 @@ class EstadoIntro(EstadoBase):
             True, (100, 100, 100))
         tela.blit(dica, (largura // 2 - dica.get_width() // 2, altura // 2 + 38))
 
-# EstadoDesmaio — tela de desmaio (meia-noite) ou dormir
+
+# EstadoDesmaio - tela de desmaio (meia-noite) ou dormir
 
 class EstadoDesmaio(EstadoBase):
     def __init__(self, dados_jogo):
         self.gd    = dados_jogo
         self.timer = pygame.time.get_ticks()
-        self.fase  = 0   # 0 = fade para preto, 1 = aguardando e mostrando mensagem
+        self.fase  = 0   # 0 = fade para preto, 1 = mostrando mensagem
         self.alfa  = 0
 
     def atualizar(self):
@@ -181,7 +131,6 @@ class EstadoDesmaio(EstadoBase):
                 self.fase = 1
 
         elif self.fase == 1 and tempo > 5000:
-            # Reinicia o dia e volta o jogador para a casa
             self.gd.horario.reiniciar_dia()
             self.gd.dormiu_voluntario = False
             jogador = self.gd.jogador
@@ -208,8 +157,8 @@ class EstadoDesmaio(EstadoBase):
                 linha1 = fonte_g.render('Descansando...', True, (180, 220, 180))
                 linha2 = fonte_n.render('Voce acorda em casa renovado no dia seguinte.', True, (130, 175, 130))
             else:
-                linha1 = fonte_g.render('Você desmaiou de cansaço...', True, (200, 170, 80))
-                linha2 = fonte_n.render('Você acorda em casa no dia seguinte.', True, (140, 140, 140))
+                linha1 = fonte_g.render('Voce desmaiou de cansaco...', True, (200, 170, 80))
+                linha2 = fonte_n.render('Voce acorda em casa no dia seguinte.', True, (140, 140, 140))
 
             tela.blit(linha1, (largura // 2 - linha1.get_width() // 2, altura // 2 - 30))
             tela.blit(linha2, (largura // 2 - linha2.get_width() // 2, altura // 2 + 20))

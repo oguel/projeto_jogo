@@ -3,6 +3,7 @@ import math
 
 from src.states    import EstadoBase, FONTES
 from src.constants import ACOES_PESCA, LABELS_PESCA, CORES_PESCA
+from src import assets as RECURSOS
 
 # Configuracoes
 Y_ZONA_ACERTO   = 490
@@ -29,9 +30,9 @@ class Nota:
         self.y            = -RAIO_NOTA
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# -------------------------------------------------------------
 # EstadoPesca
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# -------------------------------------------------------------
 class EstadoPesca(EstadoBase):
     def __init__(self, dados_jogo):
         self.gd  = dados_jogo
@@ -65,7 +66,7 @@ class EstadoPesca(EstadoBase):
         # Posicoes x das pistas (definidas no desenhar)
         self.x_pistas = [200, 290, 380, 470]
 
-    # ── Geracao de notas ─────────────────────────────────────────
+    # -- Geracao de notas -----------------------------------------
     def _gerar_notas(self, tempo_inicio: float) -> list:
         bpm         = self.dados_peixe['bpm']
         ms_por_beat = 60_000 / bpm
@@ -89,11 +90,12 @@ class EstadoPesca(EstadoBase):
             for (beat, pista) in self.dados_peixe['padrao']
         ]
 
-    # ── Eventos ──────────────────────────────────────────────────
+    # -- Eventos --------------------------------------------------
     def processar_eventos(self, eventos: list):
         if self.fase == 'resultado':
             for evento in eventos:
                 if evento.type == pygame.KEYDOWN:
+                    RECURSOS.tocar_som('tecla', self.cfg.volumes)
                     return self._finalizar()
             return self
 
@@ -106,6 +108,7 @@ class EstadoPesca(EstadoBase):
                 continue
             pista = self._tecla_para_pista(evento.key, self.cfg.teclas)
             if pista is not None:
+                RECURSOS.tocar_som('tecla', self.cfg.volumes)
                 self._tentar_acertar(pista, agora_ms)
         return self
 
@@ -148,7 +151,7 @@ class EstadoPesca(EstadoBase):
     def _fb(self, texto: str, x: int, cor: tuple):
         self.feedback.append([texto, x, Y_ZONA_ACERTO - 50, pygame.time.get_ticks(), cor])
 
-    # ── Atualizacao ──────────────────────────────────────────────
+    # -- Atualizacao ----------------------------------------------
     def atualizar(self):
         agora_real = pygame.time.get_ticks()
         agora_ms   = agora_real - self.inicio_ms
@@ -166,7 +169,7 @@ class EstadoPesca(EstadoBase):
                 return self._finalizar()
             return None
 
-        # ── Move notas ──
+        # -- Move notas --
         queda = float(self.dados_peixe['queda_ms'])
         for nota in self.notas:
             if nota.estado != 'pendente':
@@ -184,12 +187,12 @@ class EstadoPesca(EstadoBase):
                 self.barra  += PENALIDADE_MISS
                 self.barra   = max(0.0, self.barra)
 
-        # ── Remove feedback velho ──
+        # -- Remove feedback velho --
         self._tick += 1
         self.feedback = [f for f in self.feedback
                          if agora_real - f[3] < 900]
 
-        # ── Verifica condicoes de fim ──
+        # -- Verifica condicoes de fim --
         if self.barra >= 100:
             self._definir_resultado('capturado')
         elif self.barra <= 0:
@@ -217,7 +220,7 @@ class EstadoPesca(EstadoBase):
         from src.town_state import EstadoCidade
         return EstadoCidade(self.gd)
 
-    # ── Desenho ──────────────────────────────────────────────────
+    # -- Desenho --------------------------------------------------
     def desenhar(self, tela: pygame.Surface):
         largura, altura = tela.get_size()
 
@@ -236,7 +239,7 @@ class EstadoPesca(EstadoBase):
         fonte_n = FONTES.get('normal', pygame.font.SysFont('arial', 18))
         fonte_p = FONTES.get('pequena', pygame.font.SysFont('arial', 14))
 
-        # ── Contagem regressiva ──────────────────────────────────
+        # -- Contagem regressiva ----------------------------------
         if self.fase == 'contagem':
             pulso   = 1.0 + 0.3 * math.sin(pygame.time.get_ticks() * 0.01)
             tam     = int(80 * pulso)
@@ -262,7 +265,7 @@ class EstadoPesca(EstadoBase):
             tc    = fonte_n.render(f'COMBO x{self._combo}  ({multi:.1f}x)', True, cor_c)
             tela.blit(tc, (largura - tc.get_width() - 10, 10))
 
-        # ── Pistas ──────────────────────────────────────────────
+        # -- Pistas ----------------------------------------------
         for i in range(4):
             x_pista = self.x_pistas[i]
             cor     = CORES_PESCA[i]
@@ -290,7 +293,7 @@ class EstadoPesca(EstadoBase):
             ty     = Y_ZONA_ACERTO + RAIO_NOTA + 16
             tela.blit(rotulo, (x_pista - rotulo.get_width() // 2, ty))
 
-        # ── Notas ────────────────────────────────────────────────
+        # -- Notas ------------------------------------------------
         for nota in self.notas:
             x_pista = self.x_pistas[nota.pista]
             cor     = CORES_PESCA[nota.pista]
@@ -303,7 +306,7 @@ class EstadoPesca(EstadoBase):
                 cor_a = (100, 255, 100) if nota.estado == 'perfeito' else (255, 230, 80)
                 pygame.draw.circle(tela, cor_a, (x_pista, Y_ZONA_ACERTO), RAIO_NOTA + 14, 3)
 
-        # ── Feedback flutuante ───────────────────────────────────
+        # -- Feedback flutuante -----------------------------------
         agora_real = pygame.time.get_ticks()
         for (texto, fx, fy, nasceu, cor) in self.feedback:
             idade  = agora_real - nasceu
@@ -328,7 +331,7 @@ class EstadoPesca(EstadoBase):
         dica2 = fonte_p.render('Barra so diminui ao errar!', True, (100, 180, 255))
         tela.blit(dica2, (10, 60))
 
-        # ── Tela de resultado ────────────────────────────────────
+        # -- Tela de resultado ------------------------------------
         if self.fase == 'resultado':
             capturou = self.resultado == 'capturado'
             cor_res  = (80, 255, 120) if capturou else (255, 80, 80)

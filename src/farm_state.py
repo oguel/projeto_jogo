@@ -128,13 +128,23 @@ class EstadoFazenda(EstadoBase):
 
         dados_jogo.ultimo_mapa = 'fazenda'
 
+        # Inicia musica da fazenda
+        RECURSOS.tocar_musica('musica_fazenda', self.cfg.volumes)
+
+        # Timers para sons de animais (intervalo minimo de 7 segundos)
+        agora = pygame.time.get_ticks()
+        self._ultimo_som_galinha = agora
+        self._intervalo_galinha  = random.randint(7000, 16000)
+        self._ultimo_som_vaca    = agora
+        self._intervalo_vaca     = random.randint(7000, 16000)
+
  
     # Processar eventos
 
     def processar_eventos(self, eventos: list):
         # Repassa eventos para o diálogo se estiver aberto
         if self.dialogo:
-            if not self.dialogo.processar_eventos(eventos, self.cfg.teclas):
+            if not self.dialogo.processar_eventos(eventos, self.cfg.teclas, self.cfg.volumes):
                 self.dialogo = None
             return self
 
@@ -229,7 +239,7 @@ class EstadoFazenda(EstadoBase):
         if not self._tile_valido(col, lin): return
         if self.mapa[lin][col] == GRAMA:
             self.mapa[lin][col] = SOLO
-            RECURSOS.tocar_som('plantar', 'plantas', self.cfg.volumes)
+            RECURSOS.tocar_som('arando', self.cfg.volumes)
 
     def _tentar_vender(self):
         if CAIXA_VENDA.colliderect(self.jog.obter_ret()):
@@ -237,42 +247,50 @@ class EstadoFazenda(EstadoBase):
             if ganhou:
                 self._msg_venda = f'Vendido: ${ganhou}!'
                 self._timer_msg = pygame.time.get_ticks()
-                RECURSOS.tocar_som('vender', 'interface', self.cfg.volumes)
+                RECURSOS.tocar_som('tecla', self.cfg.volumes)
 
     def _tentar_plantar(self, col, lin):
         if not self._tile_valido(col, lin): return
         if self.mapa[lin][col] != SOLO: return
         ativa = self.inv.semente_ativa
         agora = pygame.time.get_ticks()
+        tocou = False
         if ativa == ID_SEMENTE and self.inv.semente > 0:
             self.inv.semente        -= 1
             self.mapa[lin][col]      = SEMENTE
             self.tp[(col, lin)]     = agora
-            RECURSOS.tocar_som('plantar', 'plantas', self.cfg.volumes)
+            tocou = True
         elif ativa == ID_SEMENTE_ESP and self.inv.semente_esp > 0:
             self.inv.semente_esp    -= 1
             self.mapa[lin][col]      = SEMENTE_ESP
             self.tp[(col, lin)]     = agora
-            RECURSOS.tocar_som('plantar', 'plantas', self.cfg.volumes)
+            tocou = True
         elif ativa == ID_MUDA and self.inv.muda > 0:
             self.inv.muda           -= 1
             self.mapa[lin][col]      = MUDA
             self.tp[(col, lin)]     = agora
-            RECURSOS.tocar_som('plantar', 'plantas', self.cfg.volumes)
+            tocou = True
+
+        if tocou:
+            RECURSOS.tocar_som('colhendo', self.cfg.volumes)
 
     def _tentar_colher(self, col, lin):
         if not self._tile_valido(col, lin): return
         tile = self.mapa[lin][col]
+        tocou = False
         if tile == COLHEITA:
             self.mapa[lin][col]   = SOLO
             self.inv.colheita    += 1
             del self.tp[(col, lin)]
-            RECURSOS.tocar_som('colher', 'plantas', self.cfg.volumes)
+            tocou = True
         elif tile == COLHEITA_ESP:
             self.mapa[lin][col]   = SOLO
             self.inv.colheita_esp += 1
             del self.tp[(col, lin)]
-            RECURSOS.tocar_som('colher', 'plantas', self.cfg.volumes)
+            tocou = True
+
+        if tocou:
+            RECURSOS.tocar_som('colhendo', self.cfg.volumes)
 
     def _tentar_cortar(self, col, lin):
         if not self._tile_valido(col, lin): return
@@ -282,12 +300,12 @@ class EstadoFazenda(EstadoBase):
             self.mapa[lin][col] = GRAMA
             self.inv.madeira   += random.randint(2, 4)
             self.tp.pop((col, lin), None)
-            RECURSOS.tocar_som('cortar', 'plantas', self.cfg.volumes)
+            RECURSOS.tocar_som('tecla', self.cfg.volumes)
         elif tile == ARVORE:
             self.mapa[lin][col] = GRAMA
             self.inv.madeira   += random.randint(3, 6)
             self.tp.pop((col, lin), None)
-            RECURSOS.tocar_som('cortar', 'plantas', self.cfg.volumes)
+            RECURSOS.tocar_som('tecla', self.cfg.volumes)
 
     def _no_ponto_de_pesca(self) -> bool:
         col, lin = self.jog.posicao_tile()
@@ -311,7 +329,7 @@ class EstadoFazenda(EstadoBase):
         self.jog.x = max(0.0, min(self.jog.x, (COLUNAS - 1) * TAM_TILE - 4))
         self.jog.y = max(0.0, min(self.jog.y, (LINHAS  - 1) * TAM_TILE - 4))
 
-        # Jogador chegou à borda direita → vai para a cidade
+        # Jogador chegou à borda direita -> vai para a cidade
         if self.jog.x > (COLUNAS - 1) * TAM_TILE - 8:
             self.jog.x = 300.0
             self.jog.y = 300.0
@@ -330,6 +348,20 @@ class EstadoFazenda(EstadoBase):
         # Atualiza animais
         atualizar_animais(self.gd.animais)
         self._tick_agua += 1
+
+        # Sons de animais aleatorios (cooldown minimo de 7 segundos)
+        tem_galinha = any(a['tipo'] == 'galinha' for a in self.gd.animais)
+        tem_vaca    = any(a['tipo'] == 'vaca' for a in self.gd.animais)
+
+        if tem_galinha and (agora - self._ultimo_som_galinha > self._intervalo_galinha):
+            RECURSOS.tocar_som('galinha', self.cfg.volumes)
+            self._ultimo_som_galinha = agora
+            self._intervalo_galinha  = random.randint(7000, 16000)
+
+        if tem_vaca and (agora - self._ultimo_som_vaca > self._intervalo_vaca):
+            RECURSOS.tocar_som('vaca', self.cfg.volumes)
+            self._ultimo_som_vaca = agora
+            self._intervalo_vaca  = random.randint(7000, 16000)
 
         return self._verificar_hora()
 
@@ -441,7 +473,7 @@ class EstadoFazenda(EstadoBase):
 
 
                 else:
-                    # ── Grama base para tudo ──
+                    # -- Grama base para tudo --
                     tela.blit(RECURSOS.obter_imagem('tile_grama', (TAM_TILE, TAM_TILE)), (rx, ry))
 
                     if tile == SOLO:
@@ -509,7 +541,7 @@ class EstadoFazenda(EstadoBase):
         self._desenhar_galinheiro(tela, fonte_p)
         self._desenhar_cerca_galinheiro(tela)
 
-        # ── Interiores (só visíveis ao entrar) ───────────────────
+        # -- Interiores (só visíveis ao entrar) -------------------
         if self._dentro_casa:
             self._desenhar_interior_casa(tela)
         if self._dentro_estabulo:
@@ -521,22 +553,22 @@ class EstadoFazenda(EstadoBase):
             galinhas = [a for a in self.gd.animais if a['tipo'] == 'galinha']
             desenhar_animais(tela, galinhas)
 
-        # ── Caixa de venda ───────────────────────────────────────
+        # -- Caixa de venda ---------------------------------------
         pygame.draw.rect(tela, (200, 165, 0), CAIXA_VENDA, border_radius=6)
         pygame.draw.rect(tela, (255, 215, 50), CAIXA_VENDA, 2, border_radius=6)
         rv = fonte_p.render('VENDA', True, (25, 16, 0))
         tela.blit(rv, (CAIXA_VENDA.centerx - rv.get_width()//2,
                         CAIXA_VENDA.centery - rv.get_height()//2))
 
-        # ── Jogador ──────────────────────────────────────────────
+        # -- Jogador ----------------------------------------------
         self.jog.desenhar(tela)
 
-        # ── Dicas contextuais ────────────────────────────────────
+        # -- Dicas contextuais ------------------------------------
         # Dica de pesca
         if self._no_ponto_de_pesca():
             tecla_p = self.cfg.teclas.get('pescar', pygame.K_f)
             if self.gd.tem_vara:
-                tip = fonte_n.render(f'[{pygame.key.name(tecla_p).upper()}] Pescar →', True, (150, 255, 200))
+                tip = fonte_n.render(f'[{pygame.key.name(tecla_p).upper()}] Pescar ->', True, (150, 255, 200))
             else:
                 tip = fonte_n.render('Compre uma Vara de Pesca no Pescador!', True, (255, 200, 80))
             tela.blit(tip, (largura // 2 - tip.get_width() // 2, altura - 58))
@@ -551,16 +583,16 @@ class EstadoFazenda(EstadoBase):
         estab_quebrado = self.gd.predios.get(ESTABULO_QUEBRADO) == ESTABULO_QUEBRADO
         gal_quebrado   = self.gd.predios.get(GALINHEIRO_QUEBRADO) == GALINHEIRO_QUEBRADO
         if estab_quebrado and RET_PX_ESTABULO.inflate(60, 60).colliderect(self.jog.obter_ret()):
-            tip_q = fonte_p.render('→ Cidade: conserte o Estábulo com o Construtor!', True, (255, 195, 80))
+            tip_q = fonte_p.render('-> Cidade: conserte o Estábulo com o Construtor!', True, (255, 195, 80))
             tela.blit(tip_q, (RET_PX_ESTABULO.centerx - tip_q.get_width() // 2,
                                RET_PX_ESTABULO.bottom + 6))
         elif gal_quebrado and RET_PX_GALINHEIRO.inflate(60, 60).colliderect(self.jog.obter_ret()):
-            tip_q = fonte_p.render('→ Cidade: conserte o Galinheiro com o Construtor!', True, (255, 195, 80))
+            tip_q = fonte_p.render('-> Cidade: conserte o Galinheiro com o Construtor!', True, (255, 195, 80))
             tela.blit(tip_q, (RET_PX_GALINHEIRO.centerx - tip_q.get_width() // 2,
                                RET_PX_GALINHEIRO.bottom + 6))
 
-        # Seta → Cidade
-        arr = fonte_p.render('→ Cidade', True, (255, 245, 200))
+        # Seta -> Cidade
+        arr = fonte_p.render('-> Cidade', True, (255, 245, 200))
         pygame.draw.rect(tela, (25, 20, 10),
                          (largura - arr.get_width() - 16, altura//2 - 12,
                           arr.get_width() + 12, 22), border_radius=5)
@@ -569,7 +601,7 @@ class EstadoFazenda(EstadoBase):
                           arr.get_width() + 12, 22), 2, border_radius=5)
         tela.blit(arr, (largura - arr.get_width() - 10, altura//2 - 8))
 
-        # ── HUD ──────────────────────────────────────────────────
+        # -- HUD --------------------------------------------------
         self.inv.desenhar_hud(tela, fonte_p, fonte_normal=fonte_n, dia=self.hor.dia)
         self._desenhar_relogio(tela, largura, fonte_n)
 
@@ -613,7 +645,7 @@ class EstadoFazenda(EstadoBase):
         if self.dialogo:
             self.dialogo.desenhar(tela, FONTES)
 
-    # ── Helpers de HUD ───────────────────────────────────────────
+    # -- Helpers de HUD -------------------------------------------
     def _desenhar_relogio(self, tela, largura, fonte):
         hora_str, hora, _ = self.hor.hora_atual()
         noite = hora >= 20
@@ -643,9 +675,9 @@ class EstadoFazenda(EstadoBase):
         caixa.set_alpha(alfa)
         tela.blit(caixa, (largura // 2 - 260, tela.get_height() // 2 - 34))
 
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # ----------------------------------------------------------
     # Desenho dos prédios
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # ----------------------------------------------------------
     def _desenhar_casa(self, tela, fonte_p):
         r = RET_PX_CASA
         x, y, w, h = r.x, r.y, r.width, r.height

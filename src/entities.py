@@ -13,7 +13,7 @@ from src.constants import (
 from src import assets as RECURSOS
 
 
-# Jogador — sprite direcional, um único jogador
+# Jogador - sprite direcional, um unico jogador
 
 LARG_JOG = 32
 ALT_JOG  = 48
@@ -74,6 +74,16 @@ class OpcaoDialogo:
         self.habilitado = habilitado
 
 
+class ItemVenda:
+    """Um item vendável com quantidade selecionável."""
+    def __init__(self, rotulo: str, id_item: str, preco_unitario: int, cor: tuple):
+        self.rotulo          = rotulo
+        self.id_item         = id_item
+        self.preco_unitario  = preco_unitario
+        self.cor             = cor
+        self.quantidade      = 1   # quantidade selecionada para vender
+
+
 class DialogoNPC:
     """Caixa de diálogo com lista de opções (mouse + teclado)."""
     LARG = 440
@@ -89,7 +99,7 @@ class DialogoNPC:
         if not any(o.rotulo == 'Fechar' for o in self.opcoes):
             self.opcoes.append(OpcaoDialogo('Fechar', lambda dados: None))
 
-    def processar_eventos(self, eventos: list, teclas: dict) -> bool:
+    def processar_eventos(self, eventos: list, teclas: dict, volumes: dict | None = None) -> bool:
         """
         Processa eventos do diálogo.
         Retorna False quando o diálogo deve ser fechado.
@@ -106,6 +116,7 @@ class DialogoNPC:
                     linha_y = by + 60 + i * alt_linha
                     if bx <= mx <= bx + self.LARG and linha_y <= my <= linha_y + alt_linha:
                         self.selecionado = i
+                        RECURSOS.tocar_som('tecla', volumes)
                         if opcao.rotulo == 'Fechar':
                             return False
                         if opcao.habilitado:
@@ -121,10 +132,13 @@ class DialogoNPC:
 
                 if evento.key in (tecla_cima, pygame.K_UP):
                     self.selecionado = (self.selecionado - 1) % len(self.opcoes)
+                    RECURSOS.tocar_som('tecla', volumes)
                 elif evento.key in (tecla_baixo, pygame.K_DOWN):
                     self.selecionado = (self.selecionado + 1) % len(self.opcoes)
+                    RECURSOS.tocar_som('tecla', volumes)
                 elif evento.key in (tecla_interagir, pygame.K_RETURN):
                     opcao = self.opcoes[self.selecionado]
+                    RECURSOS.tocar_som('tecla', volumes)
                     if opcao.rotulo == 'Fechar':
                         return False
                     if opcao.habilitado:
@@ -132,6 +146,7 @@ class DialogoNPC:
                         self.mensagem   = resultado or ''
                         self.timer_msg  = pygame.time.get_ticks()
                 elif evento.key == pygame.K_ESCAPE:
+                    RECURSOS.tocar_som('tecla', volumes)
                     return False
 
         return True
@@ -165,7 +180,7 @@ class DialogoNPC:
             bg_linha.fill(cor_fundo)
             tela.blit(bg_linha, (bx + 8, linha_y + 1))
             cor   = (255, 255, 100) if sel else (200, 200, 200) if opcao.habilitado else (100, 100, 100)
-            pref  = '▶ ' if sel else '  '
+            pref  = '> ' if sel else '  '
             linha = fonte_n.render(pref + opcao.rotulo, True, cor)
             tela.blit(linha, (bx + 18, linha_y + 6))
 
@@ -173,11 +188,338 @@ class DialogoNPC:
             msg = fonte_p.render(self.mensagem, True, (100, 255, 150))
             tela.blit(msg, (bx + 12, by + self.ALT - 28))
 
-        dica = fonte_p.render('↑↓ = navegar  E/Enter = selecionar  ESC = fechar', True, (70, 70, 70))
+        dica = fonte_p.render('W/S = navegar  Enter = selecionar  ESC = fechar', True, (70, 70, 70))
         tela.blit(dica, (bx + self.LARG // 2 - dica.get_width() // 2, by + self.ALT - 14))
 
 
-# NPCs — base
+class DialogoNPCAbas:
+    """
+    Caixa de diálogo com múltiplas abas.
+    - Aba de compra: lista de OpcaoDialogo (padrão)
+    - Aba de venda: lista de ItemVenda com seletor de quantidade
+    Q / E (ou seta esquerda/direita) trocam de aba.
+    Na aba de venda: W/S selecionam item, </> ajustam quantidade, Enter confirma.
+    """
+    LARG = 500
+    ALT  = 400
+
+    # Paleta
+    COR_FUNDO      = (14, 14, 36, 248)
+    COR_BORDA      = (70, 70, 180)
+    COR_ABA_ATIVA  = (50, 50, 160, 230)
+    COR_ABA_INATI  = (25, 25, 70, 180)
+    COR_TITULO     = (255, 240, 140)
+    COR_SEL        = (60, 60, 200, 180)
+    COR_HOVER      = (40, 40, 100, 100)
+    COR_MSG_OK     = (80, 255, 140)
+    COR_MSG_ERR    = (255, 100, 100)
+    COR_DICA       = (70, 70, 120)
+
+    def __init__(self, titulo: str, abas: list):
+        """
+        abas: lista de dicts com chaves:
+          'nome'  : str - rotulo da aba
+          'tipo'  : 'compra' | 'venda'
+          'itens' : list[OpcaoDialogo] ou list[ItemVenda]
+        """
+        self.titulo       = titulo
+        self.abas         = abas
+        self.aba_atual    = 0
+        self.selecionado  = 0
+        self.mensagem     = ''
+        self.timer_msg    = 0
+        self.cor_msg      = self.COR_MSG_OK
+
+    # -- utilidades internas --?
+    def _itens(self):
+        return self.abas[self.aba_atual]['itens']
+
+    def _tipo(self):
+        return self.abas[self.aba_atual]['tipo']
+
+    def _trocar_aba(self, delta: int):
+        self.aba_atual   = (self.aba_atual + delta) % len(self.abas)
+        self.selecionado = 0
+
+    def _msg(self, texto: str, ok: bool = True):
+        self.mensagem  = texto
+        self.timer_msg = pygame.time.get_ticks()
+        self.cor_msg   = self.COR_MSG_OK if ok else self.COR_MSG_ERR
+
+    # -- eventos --
+    def processar_eventos(self, eventos: list, teclas: dict, volumes: dict | None = None) -> bool:
+        """Retorna False quando o diálogo deve ser fechado."""
+        mods = pygame.key.get_mods()
+        for evento in eventos:
+            if evento.type == pygame.KEYDOWN:
+                k    = evento.key
+                t    = teclas
+                ctrl = mods & pygame.KMOD_SHIFT  # Shift = grandes saltos
+
+                # Fechar
+                if k == pygame.K_ESCAPE:
+                    RECURSOS.tocar_som('tecla', volumes)
+                    return False
+
+                # Trocar aba: Tab / Q (anterior) / E (próxima)
+                if k == pygame.K_TAB:
+                    delta = -1 if (mods & pygame.KMOD_SHIFT) else +1
+                    self._trocar_aba(delta)
+                    RECURSOS.tocar_som('tecla', volumes)
+                    continue
+                if k == pygame.K_q:
+                    self._trocar_aba(-1)
+                    RECURSOS.tocar_som('tecla', volumes)
+                    continue
+                if k == pygame.K_e:
+                    self._trocar_aba(+1)
+                    RECURSOS.tocar_som('tecla', volumes)
+                    continue
+
+                itens = self._itens()
+                if not itens:
+                    continue
+
+                # Navegar linhas: W/S
+                cima  = t.get('cima',  pygame.K_w)
+                baixo = t.get('baixo', pygame.K_s)
+                if k in (cima, pygame.K_UP):
+                    self.selecionado = (self.selecionado - 1) % len(itens)
+                    RECURSOS.tocar_som('tecla', volumes)
+
+                elif k in (baixo, pygame.K_DOWN):
+                    self.selecionado = (self.selecionado + 1) % len(itens)
+                    RECURSOS.tocar_som('tecla', volumes)
+
+                # Ajustar quantidade com setas </> (apenas na aba de venda)
+                elif k == pygame.K_LEFT and self._tipo() == 'venda':
+                    item = itens[self.selecionado]
+                    passo = 10 if ctrl else 1
+                    item.quantidade = max(1, item.quantidade - passo)
+                    RECURSOS.tocar_som('tecla', volumes)
+
+                elif k == pygame.K_RIGHT and self._tipo() == 'venda':
+                    item = itens[self.selecionado]
+                    passo = 10 if ctrl else 1
+                    item.quantidade += passo
+                    RECURSOS.tocar_som('tecla', volumes)
+
+                # Confirmar com Enter
+                elif k == pygame.K_RETURN:
+                    RECURSOS.tocar_som('tecla', volumes)
+                    if self._tipo() == 'compra':
+                        opcao = itens[self.selecionado]
+                        if isinstance(opcao, OpcaoDialogo):
+                            if opcao.rotulo == 'Fechar':
+                                return False
+                            if opcao.habilitado:
+                                res = opcao.acao(None)
+                                ok  = res is None or 'Precisa' not in res
+                                self._msg(res or '', ok)
+                    else:  # venda
+                        item = itens[self.selecionado]
+                        res  = item.acao(item.quantidade)
+                        ok   = res is None or ('Sem ' not in res and 'Nada' not in res)
+                        self._msg(res or '', ok)
+
+            # Clique do mouse
+            elif evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 1:
+                mx, my = evento.pos
+                bx = 800 // 2 - self.LARG // 2
+                by = 600 // 2 - self.ALT  // 2
+
+                # Clique nas abas (faixa logo abaixo do titulo)
+                alt_titulo = 30
+                aba_y      = by + alt_titulo + 1
+                alt_aba    = 34
+                larg_aba   = self.LARG // len(self.abas)
+                if aba_y <= my <= aba_y + alt_aba:
+                    for i in range(len(self.abas)):
+                        ax0 = bx + i * larg_aba
+                        if ax0 <= mx <= ax0 + larg_aba:
+                            self.aba_atual   = i
+                            self.selecionado = 0
+                            RECURSOS.tocar_som('tecla', volumes)
+                            break
+                    continue
+
+                # Clique nas linhas da aba
+                itens     = self._itens()
+                alt_linha = 44
+                y_ini     = aba_y + alt_aba + 24
+                for i, item in enumerate(itens):
+                    ly = y_ini + i * alt_linha
+                    if bx + 8 <= mx <= bx + self.LARG - 8 and ly <= my <= ly + alt_linha:
+                        self.selecionado = i
+                        RECURSOS.tocar_som('tecla', volumes)
+                        if self._tipo() == 'compra':
+                            opcao = item
+                            if isinstance(opcao, OpcaoDialogo):
+                                if opcao.rotulo == 'Fechar':
+                                    return False
+                                if opcao.habilitado:
+                                    res = opcao.acao(None)
+                                    ok  = res is None or 'Precisa' not in res
+                                    self._msg(res or '', ok)
+                        # Na venda, clique so seleciona
+                        break
+
+            # Scroll do mouse para ajustar quantidade na aba de venda
+            elif evento.type == pygame.MOUSEWHEEL and self._tipo() == 'venda':
+                itens = self._itens()
+                if itens:
+                    item = itens[self.selecionado]
+                    item.quantidade = max(1, item.quantidade + evento.y)
+                    RECURSOS.tocar_som('tecla', volumes)
+
+        return True
+
+    # -- desenho --
+    def desenhar(self, tela: pygame.Surface, fontes: dict):
+        largura, altura = tela.get_size()
+        bx = largura // 2 - self.LARG // 2
+        by = altura  // 2 - self.ALT  // 2
+
+        fonte_g = fontes.get('grande',  pygame.font.SysFont('arial', 22, bold=True))
+        fonte_n = fontes.get('normal',  pygame.font.SysFont('arial', 16))
+        fonte_p = fontes.get('pequena', pygame.font.SysFont('arial', 13))
+
+        # Fundo principal
+        fundo = pygame.Surface((self.LARG, self.ALT), pygame.SRCALPHA)
+        fundo.fill(self.COR_FUNDO)
+        pygame.draw.rect(fundo, self.COR_BORDA, fundo.get_rect(), 2, border_radius=14)
+        tela.blit(fundo, (bx, by))
+
+        # Titulo no topo
+        alt_titulo = 30
+        txt_tit = fonte_g.render(self.titulo, True, self.COR_TITULO)
+        tela.blit(txt_tit, (bx + self.LARG // 2 - txt_tit.get_width() // 2,
+                             by + alt_titulo // 2 - txt_tit.get_height() // 2 + 2))
+        pygame.draw.line(tela, self.COR_BORDA,
+                         (bx + 10, by + alt_titulo), (bx + self.LARG - 10, by + alt_titulo), 1)
+
+        # Abas
+        larg_aba  = self.LARG // len(self.abas)
+        alt_aba   = 34
+        aba_y     = by + alt_titulo + 1
+        for i, aba in enumerate(self.abas):
+            ax0   = bx + i * larg_aba
+            ativa = (i == self.aba_atual)
+            cor_a = self.COR_ABA_ATIVA if ativa else self.COR_ABA_INATI
+            surf_aba = pygame.Surface((larg_aba, alt_aba), pygame.SRCALPHA)
+            surf_aba.fill(cor_a)
+            if ativa:
+                pygame.draw.line(surf_aba, (120, 140, 255), (0, 0), (larg_aba, 0), 3)
+            pygame.draw.rect(surf_aba, self.COR_BORDA, surf_aba.get_rect(), 1)
+            tela.blit(surf_aba, (ax0, aba_y))
+            txt_aba = fonte_n.render(aba['nome'], True,
+                                     (255, 255, 180) if ativa else (140, 140, 180))
+            tela.blit(txt_aba, (ax0 + larg_aba // 2 - txt_aba.get_width() // 2,
+                                aba_y + alt_aba // 2 - txt_aba.get_height() // 2))
+
+        # Conteudo da aba
+        itens     = self._itens()
+        alt_linha = 44
+        y_ini     = aba_y + alt_aba + 24
+        mx, my    = pygame.mouse.get_pos()
+
+        if self._tipo() == 'compra':
+            self._desenhar_compra(tela, fontes, itens, bx, y_ini, alt_linha, mx, my,
+                                  fonte_n, fonte_p)
+        else:
+            self._desenhar_venda(tela, fontes, itens, bx, y_ini, alt_linha, mx, my,
+                                 fonte_n, fonte_p)
+
+        # Mensagem de feedback
+        if self.mensagem and pygame.time.get_ticks() - self.timer_msg < 2800:
+            msg_surf = fonte_p.render(self.mensagem, True, self.cor_msg)
+            tela.blit(msg_surf, (bx + self.LARG // 2 - msg_surf.get_width() // 2,
+                                  by + self.ALT - 44))
+
+        # Dica de teclado
+        if self._tipo() == 'compra':
+            dica = 'W/S navegar  Enter confirmar  Q/E ou Tab trocar aba  ESC fechar'
+        else:
+            dica = 'W/S item  </> qtd  Shift+</> x10  Scroll  Enter vender  Q/E aba'
+        txt_dica = fonte_p.render(dica, True, self.COR_DICA)
+        tela.blit(txt_dica, (bx + self.LARG // 2 - txt_dica.get_width() // 2,
+                              by + self.ALT - 20))
+
+    def _desenhar_compra(self, tela, fontes, itens, bx, y_ini, alt_linha, mx, my,
+                         fonte_n, fonte_p):
+        for i, opcao in enumerate(itens):
+            ly  = y_ini + i * alt_linha
+            sel = (i == self.selecionado)
+            hov = bx + 8 <= mx <= bx + self.LARG - 8 and ly <= my <= ly + alt_linha
+            cor_bg = self.COR_SEL if sel else (self.COR_HOVER if hov else (0, 0, 0, 0))
+            bg = pygame.Surface((self.LARG - 16, alt_linha - 4), pygame.SRCALPHA)
+            bg.fill(cor_bg)
+            tela.blit(bg, (bx + 8, ly + 2))
+
+            pref = '> ' if sel else '  '
+            cor  = (255, 255, 100) if sel else ((200, 200, 200) if opcao.habilitado else (90, 90, 90))
+            txt  = fonte_n.render(pref + opcao.rotulo, True, cor)
+            tela.blit(txt, (bx + 18, ly + (alt_linha - txt.get_height()) // 2))
+
+    def _desenhar_venda(self, tela, fontes, itens, bx, y_ini, alt_linha, mx, my,
+                        fonte_n, fonte_p):
+        # cabeçalho de colunas
+        fonte_p.render('Item', True, (140, 140, 200))
+        cab_itens  = fonte_p.render('Item',       True, (140, 140, 200))
+        cab_est    = fonte_p.render('Estoque',    True, (140, 140, 200))
+        cab_qtd    = fonte_p.render('Quantidade', True, (140, 140, 200))
+        cab_preco  = fonte_p.render('Valor',      True, (140, 140, 200))
+        tela.blit(cab_itens, (bx + 18,                       y_ini - 18))
+        tela.blit(cab_est,   (bx + self.LARG - 280,          y_ini - 18))
+        tela.blit(cab_qtd,   (bx + self.LARG - 200,          y_ini - 18))
+        tela.blit(cab_preco, (bx + self.LARG - 90,           y_ini - 18))
+        pygame.draw.line(tela, (50, 50, 100),
+                         (bx + 8, y_ini - 4), (bx + self.LARG - 8, y_ini - 4))
+
+        for i, item in enumerate(itens):
+            ly  = y_ini + i * alt_linha
+            sel = (i == self.selecionado)
+            hov = bx + 8 <= mx <= bx + self.LARG - 8 and ly <= my <= ly + alt_linha
+            cor_bg = self.COR_SEL if sel else (self.COR_HOVER if hov else (0, 0, 0, 0))
+            bg = pygame.Surface((self.LARG - 16, alt_linha - 4), pygame.SRCALPHA)
+            bg.fill(cor_bg)
+            tela.blit(bg, (bx + 8, ly + 2))
+
+            cy = ly + (alt_linha - fonte_n.get_height()) // 2
+
+            # Bolinha colorida + nome
+            pygame.draw.circle(tela, item.cor, (bx + 18, cy + fonte_n.get_height() // 2), 7)
+            pref = '> ' if sel else '  '
+            nome_surf = fonte_n.render(pref + item.rotulo, True,
+                                       (255, 255, 120) if sel else (210, 210, 210))
+            tela.blit(nome_surf, (bx + 28, cy))
+
+            # Estoque
+            est = item.estoque_fn()
+            cor_est = (100, 200, 100) if est > 0 else (180, 80, 80)
+            est_surf = fonte_n.render(str(est), True, cor_est)
+            tela.blit(est_surf, (bx + self.LARG - 280, cy))
+
+            # Seletor de quantidade
+            qtd_max = est
+            item.quantidade = max(1, min(item.quantidade, max(1, qtd_max)))
+            qtd_surf = fonte_n.render(str(item.quantidade), True,
+                                      (255, 220, 80) if sel else (200, 200, 120))
+            tela.blit(qtd_surf, (bx + self.LARG - 200 + 30 - qtd_surf.get_width() // 2, cy))
+            if sel:
+                arr_l = fonte_p.render('<', True, (160, 160, 255))
+                arr_r = fonte_p.render('>', True, (160, 160, 255))
+                tela.blit(arr_l, (bx + self.LARG - 200,      cy + 3))
+                tela.blit(arr_r, (bx + self.LARG - 200 + 54, cy + 3))
+
+            # Valor total
+            valor = item.quantidade * item.preco_unitario
+            cor_v = (100, 240, 120) if est >= item.quantidade else (180, 80, 80)
+            val_surf = fonte_n.render(f'${valor}', True, cor_v)
+            tela.blit(val_surf, (bx + self.LARG - 90, cy))
+
+
+# NPCs - base
 
 LARG_NPC = 32
 ALT_NPC  = 48
@@ -212,9 +554,10 @@ class NPCFazendeiro(NPCBase):
     def __init__(self, x, y):
         super().__init__('Fazendeiro', 'npc_fazendeiro', x, y)
 
-    def obter_dialogo(self, dados_jogo) -> DialogoNPC:
+    def obter_dialogo(self, dados_jogo) -> DialogoNPCAbas:
         inv = dados_jogo.inventario
 
+        # Aba Comprar
         def comprar(id_item, preco, atributo):
             def _comprar(dados):
                 if inv.dinheiro >= preco:
@@ -224,13 +567,41 @@ class NPCFazendeiro(NPCBase):
                 return f'Precisa de ${preco}!'
             return _comprar
 
-        return DialogoNPC('Fazendeiro', [
-            OpcaoDialogo(f'Semente (${PRECOS_COMPRA[ID_SEMENTE]})',
+        opcoes_compra = [
+            OpcaoDialogo(f'Semente  (${PRECOS_COMPRA[ID_SEMENTE]} cada)',
                          comprar(ID_SEMENTE, PRECOS_COMPRA[ID_SEMENTE], 'semente')),
-            OpcaoDialogo(f'Semente Especial (${PRECOS_COMPRA[ID_SEMENTE_ESP]})',
+            OpcaoDialogo(f'Semente Especial  (${PRECOS_COMPRA[ID_SEMENTE_ESP]} cada)',
                          comprar(ID_SEMENTE_ESP, PRECOS_COMPRA[ID_SEMENTE_ESP], 'semente_esp')),
-            OpcaoDialogo(f'Muda de Árvore (${PRECOS_COMPRA[ID_MUDA]})',
+            OpcaoDialogo(f'Muda de Arvore  (${PRECOS_COMPRA[ID_MUDA]} cada)',
                          comprar(ID_MUDA, PRECOS_COMPRA[ID_MUDA], 'muda')),
+            OpcaoDialogo('Fechar', lambda d: None),
+        ]
+
+        # Aba Vender
+        def fazer_item_venda(rotulo, id_item, preco, cor):
+            it = ItemVenda(rotulo, id_item, preco, cor)
+            it.estoque_fn = lambda i=id_item: inv.quantidade(i)
+            def _vender(qtd):
+                est = inv.quantidade(id_item)
+                if est <= 0:
+                    return f'Sem {rotulo} no inventário!'
+                qtd_real = min(qtd, est)
+                total = qtd_real * preco
+                inv.remover(id_item, qtd_real)
+                inv.dinheiro += total
+                return f'Vendeu {qtd_real}x {rotulo}: +${total}  (saldo: ${inv.dinheiro})'
+            it.acao = _vender
+            return it
+
+        itens_venda = [
+            fazer_item_venda('Trigo colhido',   ID_COLHEITA,     PRECOS_VENDA[ID_COLHEITA],     (240, 210,  50)),
+            fazer_item_venda('Cenoura colhida', ID_COLHEITA_ESP, PRECOS_VENDA[ID_COLHEITA_ESP], (240, 100,  60)),
+            fazer_item_venda('Madeira',         ID_MADEIRA,      PRECOS_VENDA[ID_MADEIRA],      (160, 110,  50)),
+        ]
+
+        return DialogoNPCAbas('Loja do Fazendeiro', [
+            {'nome': 'Comprar',  'tipo': 'compra', 'itens': opcoes_compra},
+            {'nome': 'Vender',   'tipo': 'venda',  'itens': itens_venda},
         ])
 
 
@@ -238,34 +609,52 @@ class NPCPescador(NPCBase):
     def __init__(self, x, y):
         super().__init__('Pescador', 'npc_pescador', x, y)
 
-    def obter_dialogo(self, dados_jogo) -> DialogoNPC:
+    def obter_dialogo(self, dados_jogo) -> DialogoNPCAbas:
         inv        = dados_jogo.inventario
         preco_vara = 30
 
+        # Aba Comprar
         def comprar_vara(dados):
             if dados_jogo.tem_vara:
-                return 'Você já tem uma vara de pesca!'
+                return 'Voce ja tem uma vara de pesca!'
             if inv.dinheiro >= preco_vara:
-                inv.dinheiro         -= preco_vara
-                dados_jogo.tem_vara   = True
-                return 'Vara comprada! Vá até o pier e pressione F.'
+                inv.dinheiro        -= preco_vara
+                dados_jogo.tem_vara  = True
+                return 'Vara comprada! Va ate o pier e pressione F.'
             return f'Precisa de ${preco_vara}!'
-
-        def vender_peixes(dados):
-            tipos  = {ID_PEIXE_COMUM:   PRECOS_VENDA[ID_PEIXE_COMUM],
-                      ID_PEIXE_DOURADO:  PRECOS_VENDA[ID_PEIXE_DOURADO],
-                      ID_PEIXE_RARO:     PRECOS_VENDA[ID_PEIXE_RARO]}
-            total  = sum(inv.quantidade(t) * p for t, p in tipos.items())
-            for t in tipos:
-                inv.remover(t, inv.quantidade(t))
-            inv.dinheiro += total
-            return f'Vendeu peixes: ${total}!' if total else 'Sem peixes para vender.'
 
         rotulo_vara = f'Vara de Pesca (${preco_vara})' + \
                       (' [Comprada]' if dados_jogo.tem_vara else '')
-        return DialogoNPC('Pescador', [
+        opcoes_compra = [
             OpcaoDialogo(rotulo_vara, comprar_vara, habilitado=not dados_jogo.tem_vara),
-            OpcaoDialogo('Vender todos os peixes', vender_peixes),
+            OpcaoDialogo('Fechar', lambda d: None),
+        ]
+
+        # Aba Vender Peixes
+        def fazer_item_peixe(rotulo, id_item, preco, cor):
+            it = ItemVenda(rotulo, id_item, preco, cor)
+            it.estoque_fn = lambda i=id_item: inv.quantidade(i)
+            def _vender(qtd):
+                est = inv.quantidade(id_item)
+                if est <= 0:
+                    return f'Sem {rotulo} no inventario!'
+                qtd_real = min(qtd, est)
+                total = qtd_real * preco
+                inv.remover(id_item, qtd_real)
+                inv.dinheiro += total
+                return f'Vendeu {qtd_real}x {rotulo}: +${total}  (saldo: ${inv.dinheiro})'
+            it.acao = _vender
+            return it
+
+        itens_peixes = [
+            fazer_item_peixe('Peixe Comum',   ID_PEIXE_COMUM,   PRECOS_VENDA[ID_PEIXE_COMUM],   ( 80, 160, 255)),
+            fazer_item_peixe('Peixe Dourado', ID_PEIXE_DOURADO, PRECOS_VENDA[ID_PEIXE_DOURADO], (255, 200,  40)),
+            fazer_item_peixe('Peixe Raro',    ID_PEIXE_RARO,    PRECOS_VENDA[ID_PEIXE_RARO],    (180,  80, 240)),
+        ]
+
+        return DialogoNPCAbas('Pescador', [
+            {'nome': 'Comprar',        'tipo': 'compra', 'itens': opcoes_compra},
+            {'nome': 'Vender Peixes',  'tipo': 'venda',  'itens': itens_peixes},
         ])
 
 

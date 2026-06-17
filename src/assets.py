@@ -11,12 +11,10 @@ _TILES   = os.path.join(DIR_IMAGENS, 'tiles')
 _ANIMAIS = os.path.join(DIR_IMAGENS, 'animais')
 _PLANTAS = os.path.join(DIR_IMAGENS, 'plantas')
 _PREDIOS = os.path.join(DIR_IMAGENS, 'predios')
-
-
-# Mapeamento chave → arquivo
+_UI      = os.path.join(DIR_IMAGENS, 'ui')
 
 CAMINHOS_IMG = {
-    # Jogador — 4 direcoes
+    # Jogador - 4 direcoes
     'jogador_down':  os.path.join(_JOGADOR, 'Player_down_15-20.png'),
     'jogador_up':    os.path.join(_JOGADOR, 'Player_up_15-20.png'),
     'jogador_left':  os.path.join(_JOGADOR, 'Player_left_15-20.png'),
@@ -59,24 +57,33 @@ CAMINHOS_IMG = {
     # Colheitas
     'colheita':     os.path.join(_PLANTAS, 'trigo_pronto_15-15.png'),
     'colheita_esp': os.path.join(_PLANTAS, 'cenoura_pronta_15-15.png'),
+
+    # UI
+    'titlescreen': os.path.join(_UI, 'Titlescreen.png'),
 }
 
 CAMINHOS_SOM = {
-    'plantar':      os.path.join(DIR_SONS, 'plantas',  'plantar.wav'),
-    'colher':       os.path.join(DIR_SONS, 'plantas',  'colher.wav'),
-    'cortar':       os.path.join(DIR_SONS, 'plantas',  'cortar.wav'),
-    'vender':       os.path.join(DIR_SONS, 'interface','vender.wav'),
+    # SFX
+    'arando':   os.path.join(DIR_SONS, 'somArando.mp3'),
+    'colhendo': os.path.join(DIR_SONS, 'somColhendo.mp3'),
+    'tecla':    os.path.join(DIR_SONS, 'somTecla.mp3'),
+    'galinha':  os.path.join(DIR_SONS, 'somGalinha.mp3'),
+    'vaca':     os.path.join(DIR_SONS, 'somVaca.mp3'),
+    # Legado (mantido para compatibilidade)
+    'vender':   os.path.join(DIR_SONS, 'somTecla.mp3'),
+}
+
+CAMINHOS_MUSICA = {
+    'musica_fazenda': os.path.join(DIR_SONS, 'somFazenda.mp3'),
+    'musica_cidade':  os.path.join(DIR_SONS, 'somCidade.mp3'),
 }
 
 _CACHE_IMAGEM: dict = {}
 _CACHE_SOM:    dict = {}
+_MUSICA_ATUAL: str  = ''
 
 
 def obter_imagem(chave: str, tamanho: tuple | None = None) -> pygame.Surface:
-    """
-    Retorna Surface escalada para `tamanho`.
-    Se o arquivo nao existir, retorna um placeholder colorido.
-    """
     from src.constants import TAM_TILE
     if tamanho is None:
         tamanho = (TAM_TILE, TAM_TILE)
@@ -89,10 +96,10 @@ def obter_imagem(chave: str, tamanho: tuple | None = None) -> pygame.Surface:
     surf    = None
     if caminho and os.path.isfile(caminho):
         try:
-            carregado = pygame.image.load(caminho).convert_alpha()
-            surf      = pygame.transform.scale(carregado, tamanho)
+            surf = pygame.transform.scale(
+                pygame.image.load(caminho).convert_alpha(), tamanho)
         except Exception:
-            surf = None
+            pass
 
     if surf is None:
         surf = pygame.Surface(tamanho, pygame.SRCALPHA)
@@ -100,6 +107,17 @@ def obter_imagem(chave: str, tamanho: tuple | None = None) -> pygame.Surface:
 
     _CACHE_IMAGEM[chave_cache] = surf
     return surf
+
+
+def obter_imagem_original(chave: str) -> pygame.Surface | None:
+    """Retorna a imagem em tamanho original (sem escalar)."""
+    caminho = CAMINHOS_IMG.get(chave, '')
+    if caminho and os.path.isfile(caminho):
+        try:
+            return pygame.image.load(caminho).convert_alpha()
+        except Exception:
+            pass
+    return None
 
 
 def obter_som(chave: str) -> pygame.mixer.Sound | None:
@@ -116,14 +134,51 @@ def obter_som(chave: str) -> pygame.mixer.Sound | None:
     return som
 
 
-def tocar_som(chave: str, categoria: str = 'interface', volumes: dict | None = None):
+def tocar_som(chave: str, volumes: dict | None = None):
+    """Toca um SFX aplicando o volume geral."""
     som = obter_som(chave)
     if som:
-        vol = 1.0
-        if volumes and categoria in volumes:
-            vol = volumes[categoria]
+        vol = volumes.get('geral', 1.0) if volumes else 1.0
         som.set_volume(max(0.0, min(1.0, vol)))
         som.play()
+
+
+def tocar_musica(chave: str, volumes: dict | None = None):
+    """Inicia uma musica em loop. Se ja estiver tocando a mesma, nao reinicia."""
+    global _MUSICA_ATUAL
+    caminho = CAMINHOS_MUSICA.get(chave, '')
+    if not caminho or not os.path.isfile(caminho):
+        return
+    if _MUSICA_ATUAL == chave:
+        # Apenas atualiza o volume
+        atualizar_volume_musica(volumes)
+        return
+    try:
+        pygame.mixer.music.load(caminho)
+        vol = volumes.get('musica', 0.5) if volumes else 0.5
+        pygame.mixer.music.set_volume(max(0.0, min(1.0, vol)))
+        pygame.mixer.music.play(-1)  # -1 = loop infinito
+        _MUSICA_ATUAL = chave
+    except Exception:
+        pass
+
+
+def parar_musica():
+    global _MUSICA_ATUAL
+    try:
+        pygame.mixer.music.stop()
+    except Exception:
+        pass
+    _MUSICA_ATUAL = ''
+
+
+def atualizar_volume_musica(volumes: dict | None = None):
+    """Atualiza o volume da musica em reproducao."""
+    vol = volumes.get('musica', 0.5) if volumes else 0.5
+    try:
+        pygame.mixer.music.set_volume(max(0.0, min(1.0, vol)))
+    except Exception:
+        pass
 
 
 def limpar_cache():
@@ -131,5 +186,5 @@ def limpar_cache():
 
 
 def criar_pastas():
-    for pasta in [_JOGADOR, _TILES, _PREDIOS, _ANIMAIS, _PLANTAS]:
+    for pasta in [_JOGADOR, _TILES, _PREDIOS, _ANIMAIS, _PLANTAS, _UI]:
         os.makedirs(pasta, exist_ok=True)

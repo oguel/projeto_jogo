@@ -5,7 +5,7 @@ import pygame
 
 LARGURA  = 800
 ALTURA   = 600
-TAM_TILE = 40          # tamanho de cada tile em pixels
+TAM_TILE = 40
 FPS      = 60
 COLUNAS  = LARGURA  // TAM_TILE   # 20 colunas
 LINHAS   = ALTURA   // TAM_TILE   # 15 linhas
@@ -13,19 +13,19 @@ LINHAS   = ALTURA   // TAM_TILE   # 15 linhas
 
 # Tipos de tile
 
-GRAMA       = 0
-SOLO        = 1
-SEMENTE     = 2   
-SEMENTE_ESP = 3   
-MUDA        = 4   
-ARVORE      = 5   
-AGUA        = 6
-PIER        = 7
-COLHEITA    = 8   # planta comum madura pronta para colher
-COLHEITA_ESP = 9  # planta especial madura pronta para colher
+GRAMA        = 0
+SOLO         = 1
+SEMENTE      = 2
+SEMENTE_ESP  = 3
+MUDA         = 4
+ARVORE       = 5
+AGUA         = 6
+PIER         = 7
+COLHEITA     = 8
+COLHEITA_ESP = 9
 
 
-# Identificadores de item do inventário
+# Identificadores de item do inventario
 
 ID_SEMENTE        = 'semente'
 ID_SEMENTE_ESP    = 'semente_esp'
@@ -38,7 +38,7 @@ ID_PEIXE_DOURADO  = 'peixe_dourado'
 ID_PEIXE_RARO     = 'peixe_raro'
 
 
-# Estado dos prédios
+# Estado dos predios
 
 ESTABULO_QUEBRADO    = 'estabulo_quebrado'
 ESTABULO_FIXO        = 'estabulo_fixo'
@@ -53,12 +53,12 @@ CUSTO_REPARO = {
 
 # Tempo de crescimento das plantas (ms)
 
-TEMPO_SEMENTE   = 15_000   
-TEMPO_ESPECIAL  = 30_000   
-TEMPO_MUDA      = 60_000   
+TEMPO_SEMENTE   = 15_000
+TEMPO_ESPECIAL  = 30_000
+TEMPO_MUDA      = 60_000
 
 
-# Preços
+# Precos
 
 PRECOS_VENDA = {
     ID_COLHEITA:      5,
@@ -81,7 +81,7 @@ CUSTO_ANIMAIS = {
 }
 
 
-# Teclas padrão do jogador
+# Teclas padrao do jogador
 
 TECLAS_PADRAO = {
     'cima':       pygame.K_w,
@@ -98,90 +98,86 @@ TECLAS_PADRAO = {
 }
 
 
-# Minigame de pesca: lanes e padrões
+# Minigame de pesca: lanes e padroes
 
 ACOES_PESCA  = ['esquerda', 'baixo', 'cima', 'direita']
 LABELS_PESCA = ['A', 'S', 'W', 'D']
 CORES_PESCA  = [
-    (255,  80,  80),  # esquerda — vermelho
-    ( 80, 220,  80),  # baixo    — verde
-    ( 80, 150, 255),  # cima     — azul
-    (255, 210,  50),  # direita  — amarelo
+    (255,  80,  80),  # esquerda
+    ( 80, 220,  80),  # baixo
+    ( 80, 150, 255),  # cima
+    (255, 210,  50),  # direita
 ]
 
 PADROES_PESCA_PADRAO = {
     'comum': {
-        'nome':          'Peixinho',
-        'cor':           (100, 180, 255),
-        'icone':         'C',
-        'bpm':           55,
-        'padrao':        [(0,0),(1,2),(2,1),(3,3),(4,0),(5,2),(6,1),(7,3)],
-        'queda_ms':      1800,
-        'item_recompensa':  ID_PEIXE_COMUM,
-        'qtd_recompensa':   1,
+        'nome':           'Peixinho',
+        'cor':            (100, 180, 255),
+        'icone':          'C',
+        'bpm':            55,
+        'padrao':         [(0,0),(1,2),(2,1),(3,3),(4,0),(5,2),(6,1),(7,3)],
+        'queda_ms':       1800,
+        'item_recompensa': ID_PEIXE_COMUM,
+        'qtd_recompensa':  1,
     },
     'dourado': {
-        'nome':          'Peixe Dourado',
-        'cor':           (255, 200, 50),
-        'icone':         'D',
-        'bpm':           80,
-        'padrao':        [(0,0),(1,1),(2,0),(3,2),(4,1),(5,3),(6,2),(7,0),
-                          (8,3),(9,1),(10,3),(11,0),(12,2),(13,1),(14,3),(15,2)],
-        'queda_ms':      1400,
-        'item_recompensa':  ID_PEIXE_DOURADO,
-        'qtd_recompensa':   1,
+        'nome':           'Peixe Dourado',
+        'cor':            (255, 200, 50),
+        'icone':          'D',
+        'bpm':            80,
+        'padrao':         [(0,0),(1,1),(2,0),(3,2),(4,1),(5,3),(6,2),(7,0),
+                           (8,3),(9,1),(10,3),(11,0),(12,2),(13,1),(14,3),(15,2)],
+        'queda_ms':       1400,
+        'item_recompensa': ID_PEIXE_DOURADO,
+        'qtd_recompensa':  1,
     },
     'raro': {
-        'nome':          'Peixe Raro',
-        'cor':           (180, 50, 255),
-        'icone':         'R',
-        'bpm':           110,
-        'padrao':        [(0,0),(1,1),(2,2),(3,3),(4,0),(5,2),(6,1),(7,3),
-                          (8,2),(9,0),(10,3),(11,1),(12,2),(13,0),(14,3),(15,1),
-                          (16,2),(17,3),(18,0),(19,1),(20,3),(21,2),(22,0),(23,3)],
-        'queda_ms':      1100,
-        'item_recompensa':  ID_PEIXE_RARO,
-        'qtd_recompensa':   1,
+        'nome':           'Peixe Raro',
+        'cor':            (180, 50, 255),
+        'icone':          'R',
+        'bpm':            110,
+        'padrao':         [(0,0),(1,1),(2,2),(3,3),(4,0),(5,2),(6,1),(7,3),
+                           (8,2),(9,0),(10,3),(11,1),(12,2),(13,0),(14,3),(15,1),
+                           (16,2),(17,3),(18,0),(19,1),(20,3),(21,2),(22,0),(23,3)],
+        'queda_ms':       1100,
+        'item_recompensa': ID_PEIXE_RARO,
+        'qtd_recompensa':  1,
     },
 }
 
 
-# Posições dos prédios na fazenda (col, lin, larg, alt)
+# Posicoes dos predios na fazenda (col, lin, larg, alt)
 
-RET_CASA        = (0, 0, 4, 3)  
-RET_ESTABULO    = (0, 7, 4, 4)   
-RET_GALINHEIRO  = (6, 0, 3, 3)   
+RET_CASA        = (0, 0, 4, 3)
+RET_ESTABULO    = (0, 7, 4, 4)
+RET_GALINHEIRO  = (6, 0, 3, 3)
 
 # Lago e pier de pesca
 COLS_LAGO    = range(12, 20)
 LINHAS_LAGO  = range( 9, 15)
 COLS_PIER    = range( 9, 16)
 LINHAS_PIER  = range(11, 13)
-COL_PESCAR   = 15   
+COL_PESCAR   = 15
 
 SPAWN_X = 64
 SPAWN_Y = 50
 
-# Cor de fundo do pier
-COR_PIER    = (120,  80,  40)
+COR_PIER = (120, 80, 40)
 
 
 # Sistema de tempo interno
 
-HORA_INICIO        = 8    
-HORA_FIM           = 24  
-MINUTOS_POR_TICK   = 10   
-SEGUNDOS_POR_TICK  = 5   
+HORA_INICIO        = 8
+HORA_FIM           = 24
+MINUTOS_POR_TICK   = 10
+SEGUNDOS_POR_TICK  = 5
 
 
-# Volumes padrão
+# Volume padrao (barra unica geral)
 
 VOLUMES_PADRAO = {
-    'animais':    0.8,
-    'plantas':    0.6,
-    'pesca':      0.8,
-    'interface':  0.7,
-    'musica':     0.5,
+    'geral': 0.7,
+    'musica': 0.5,
 }
 
 RESOLUCOES = [(800, 600), (1024, 768), (1280, 720)]

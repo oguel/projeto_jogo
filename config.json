@@ -13,11 +13,12 @@
     "inventario": 105
   },
   "volumes": {
+    "geral": 0.51,
+    "musica": 0.03333333333333333,
     "animais": 0.79,
     "plantas": 0.6,
     "pesca": 0.8,
     "interface": 0.7,
-    "musica": 0.5,
     "animals": 0.75,
     "plants": 0.6,
     "fishing": 0.8,

@@ -16,14 +16,13 @@ CAMINHO_CONFIG = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     'config.json'
 )
-
 CAMINHO_SAVE = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     'save.json'
 )
 
 
-# Configuracao — teclas, áudio, tela
+# Configuracao - teclas, audio, tela
 
 class Configuracao:
     def __init__(self):
@@ -35,10 +34,9 @@ class Configuracao:
         self.carregar()
 
     def salvar(self):
-        """Salva as configurações atuais em config.json."""
         dados = {
-            'teclas': {acao: tecla for acao, tecla in self.teclas.items()},
-            'volumes': self.volumes,
+            'teclas':     {acao: tecla for acao, tecla in self.teclas.items()},
+            'volumes':    self.volumes,
             'tela_cheia': self.tela_cheia,
         }
         try:
@@ -48,7 +46,6 @@ class Configuracao:
             pass
 
     def carregar(self):
-        """Carrega as configurações salvas de config.json, se existir."""
         if not os.path.isfile(CAMINHO_CONFIG):
             return
         try:
@@ -64,7 +61,8 @@ class Configuracao:
         except Exception:
             pass
 
-# Inventario — tudo que o jogador possui
+
+# Inventario - tudo que o jogador possui
 
 CICLO_SEMENTES = [ID_SEMENTE, ID_SEMENTE_ESP, ID_MUDA]
 
@@ -80,9 +78,8 @@ class Inventario:
         self.peixe_comum      = 0
         self.peixe_dourado    = 0
         self.peixe_raro       = 0
-        self.semente_ativa    = ID_SEMENTE   # qual semente está selecionada
+        self.semente_ativa    = ID_SEMENTE
 
-    # Nomes legíveis das sementes para o HUD
     _NOME_SEMENTE = {
         ID_SEMENTE:     'Trigo',
         ID_SEMENTE_ESP: 'Cenoura',
@@ -90,29 +87,23 @@ class Inventario:
     }
 
     def ciclar_semente(self):
-        """Alterna para a próxima semente no ciclo."""
         idx = CICLO_SEMENTES.index(self.semente_ativa)
         self.semente_ativa = CICLO_SEMENTES[(idx + 1) % len(CICLO_SEMENTES)]
 
     def quantidade(self, id_item: str) -> int:
-        """Retorna quantos exemplares do item o jogador possui."""
-        nome_attr = id_item.replace('-', '_')
-        return getattr(self, nome_attr, 0)
+        return getattr(self, id_item.replace('-', '_'), 0)
 
     def adicionar(self, id_item: str, qtd: int = 1):
-        """Adiciona exemplares de um item ao inventário."""
-        nome_attr = id_item.replace('-', '_')
-        if hasattr(self, nome_attr):
-            setattr(self, nome_attr, getattr(self, nome_attr) + qtd)
+        nome = id_item.replace('-', '_')
+        if hasattr(self, nome):
+            setattr(self, nome, getattr(self, nome) + qtd)
 
     def remover(self, id_item: str, qtd: int = 1):
-        """Remove exemplares de um item (sem ir abaixo de zero)."""
-        nome_attr = id_item.replace('-', '_')
-        if hasattr(self, nome_attr):
-            setattr(self, nome_attr, max(0, getattr(self, nome_attr) - qtd))
+        nome = id_item.replace('-', '_')
+        if hasattr(self, nome):
+            setattr(self, nome, max(0, getattr(self, nome) - qtd))
 
     def vender_tudo(self) -> int:
-        """Vende todos os itens vendáveis e retorna o total ganho."""
         total = 0
         for id_item, preco in PRECOS_VENDA.items():
             qtd = self.quantidade(id_item)
@@ -128,8 +119,7 @@ class Inventario:
         def _painel(texto, cor_texto, cor_borda, x, y, cor_icone=None):
             surf = fonte_pequena.render(texto, True, cor_texto)
             larg = surf.get_width() + (28 if cor_icone else 14)
-            alt  = 24
-            box  = pygame.Surface((larg, alt), pygame.SRCALPHA)
+            box  = pygame.Surface((larg, 24), pygame.SRCALPHA)
             box.fill((12, 10, 4, 210))
             pygame.draw.rect(box, cor_borda, box.get_rect(), 1, border_radius=5)
             tela.blit(box, (x, y))
@@ -139,11 +129,10 @@ class Inventario:
             else:
                 tela.blit(surf, (x + 7, y + 4))
 
-        _painel(f'${self.dinheiro}',       (255, 230, 80),  (180, 150, 40), 4, 4,  (220, 185, 30))
-        _painel(f'Dia {dia}',              (200, 220, 255), (80, 100, 160), 4, 32, (80, 120, 210))
-        _painel(f'Madeira: {self.madeira}',(200, 170, 110), (120, 90,  40), 4, 60, (160, 110, 50))
+        _painel(f'${self.dinheiro}',        (255, 230, 80),  (180, 150, 40), 4, 4,  (220, 185, 30))
+        _painel(f'Dia {dia}',               (200, 220, 255), (80, 100, 160), 4, 32, (80, 120, 210))
+        _painel(f'Madeira: {self.madeira}', (200, 170, 110), (120, 90,  40), 4, 60, (160, 110, 50))
 
-        # Semente ativa
         _COR_BORDA = {
             ID_SEMENTE:     (60, 200, 60),
             ID_SEMENTE_ESP: (200, 80, 220),
@@ -170,7 +159,6 @@ class Inventario:
         pygame.draw.rect(tela, cor_icone, (10, alt_tela - alt_box - 1, 14, 20), border_radius=3)
         tela.blit(txt_sem, (28, alt_tela - alt_box - 1))
 
-
     def desenhar_painel(self, tela: pygame.Surface, fontes: dict, tem_vara: bool):
         largura, altura = tela.get_size()
         larg_painel = 420
@@ -178,7 +166,6 @@ class Inventario:
         px = largura  // 2 - larg_painel // 2
         py = altura   // 2 - alt_painel  // 2
 
-        # Fundo com borda
         fundo = pygame.Surface((larg_painel, alt_painel), pygame.SRCALPHA)
         fundo.fill((10, 14, 28, 248))
         pygame.draw.rect(fundo, (60, 70, 140), fundo.get_rect(), 2, border_radius=14)
@@ -188,12 +175,10 @@ class Inventario:
         fonte_n = fontes.get('normal',  pygame.font.SysFont('arial', 16))
         fonte_p = fontes.get('pequena', pygame.font.SysFont('arial', 13))
 
-        # Titulo
         titulo = fonte_g.render('INVENTARIO', True, (255, 235, 100))
         tela.blit(titulo, (px + larg_painel // 2 - titulo.get_width() // 2, py + 10))
         pygame.draw.line(tela, (60, 70, 140), (px + 12, py + 40), (px + larg_painel - 12, py + 40), 1)
 
-        # Itens com icone colorido + nome + valor
         itens = [
             ('Dinheiro',        f'${self.dinheiro}',   (220, 185,  30)),
             ('Trigo (semente)', str(self.semente),     ( 80, 200,  80)),
@@ -205,30 +190,22 @@ class Inventario:
             ('Peixe Comum',     str(self.peixe_comum), ( 80, 160, 255)),
             ('Peixe Dourado',   str(self.peixe_dourado),(255, 200,  40)),
             ('Peixe Raro',      str(self.peixe_raro),  (180,  80, 240)),
-            ('Vara de Pesca',   'SIM' if tem_vara else 'NAO', (80, 220, 80) if tem_vara else (180, 80, 80)),
+            ('Vara de Pesca',   'SIM' if tem_vara else 'NAO',
+                                (80, 220, 80) if tem_vara else (180, 80, 80)),
         ]
 
         col_larg = (larg_painel - 24) // 2
         for i, (rotulo, valor, cor_ic) in enumerate(itens):
-            col   = i % 2
-            linha = i // 2
-            ix    = px + 12 + col * (col_larg + 0)
-            iy    = py + 50 + linha * 38
+            col  = i % 2
+            iy   = py + 50 + (i // 2) * 38
+            ix   = px + 12 + col * col_larg
 
-            # Fundo do card
             card = pygame.Surface((col_larg, 32), pygame.SRCALPHA)
             card.fill((20, 24, 48, 180))
             pygame.draw.rect(card, (*cor_ic, 80), card.get_rect(), 1, border_radius=6)
             tela.blit(card, (ix, iy))
-
-            # Icone colorido
             pygame.draw.rect(tela, cor_ic, (ix + 5, iy + 8, 10, 16), border_radius=3)
-
-            # Rotulo
-            t_rot = fonte_p.render(rotulo, True, (190, 190, 210))
-            tela.blit(t_rot, (ix + 20, iy + 4))
-
-            # Valor
+            tela.blit(fonte_p.render(rotulo, True, (190, 190, 210)), (ix + 20, iy + 4))
             cor_val = cor_ic if valor not in ('0', 'NAO') else (100, 100, 120)
             t_val = fonte_n.render(valor, True, cor_val)
             tela.blit(t_val, (ix + col_larg - t_val.get_width() - 8, iy + 10))
@@ -237,19 +214,17 @@ class Inventario:
         tela.blit(dica, (px + larg_painel // 2 - dica.get_width() // 2, py + alt_painel - 22))
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# SistemaHorario — relógio interno do dia
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# SistemaHorario - relogio interno do dia
+
 class SistemaHorario:
     def __init__(self):
-        self._hora_real_inicio = pygame.time.get_ticks()
-        self.hora              = HORA_INICIO
-        self.minuto            = 0
-        self.dia               = 1
+        self._hora_real_inicio  = pygame.time.get_ticks()
+        self.hora               = HORA_INICIO
+        self.minuto             = 0
+        self.dia                = 1
         self.notificado_cansado = False
 
     def hora_atual(self) -> tuple[str, int, int]:
-        """Retorna (string_hora, hora_int, minuto_int)."""
         ms_passados = pygame.time.get_ticks() - self._hora_real_inicio
         ticks       = ms_passados // (SEGUNDOS_POR_TICK * 1000)
         total_min   = HORA_INICIO * 60 + ticks * MINUTOS_POR_TICK
@@ -258,109 +233,79 @@ class SistemaHorario:
         return f'{hora:02d}:{minuto:02d}', hora, minuto
 
     def eh_meia_noite(self) -> bool:
-        """Verifica se chegou à hora de dormir forçado."""
         _, hora, _ = self.hora_atual()
         return hora >= HORA_FIM
 
     def hora_cansado(self) -> bool:
-        """Verifica se o jogador está ficando cansado (1h antes do fim)."""
         _, hora, _ = self.hora_atual()
         return hora >= HORA_FIM - 1
 
     def nivel_escuridao(self) -> float:
-        """Retorna nível de escuridão entre 0.0 (dia) e 1.0 (meia-noite)."""
         _, hora, _ = self.hora_atual()
         if hora < 18:
             return 0.0
         return min(1.0, (hora - 18) / 6)
 
     def reiniciar_dia(self):
-        """Avança para o próximo dia e reinicia o relógio."""
         self.dia               += 1
         self.notificado_cansado = False
         self._hora_real_inicio  = pygame.time.get_ticks()
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# DadosJogo — contentor global compartilhado entre estados
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# DadosJogo - contentor global compartilhado entre estados
+
 class DadosJogo:
     def __init__(self):
-        self.configuracao   = Configuracao()
-        self.inventario     = Inventario()
-        self.horario        = SistemaHorario()
+        self.configuracao  = Configuracao()
+        self.inventario    = Inventario()
+        self.horario       = SistemaHorario()
 
-        # Mapa da fazenda (inicializado no EstadoFazenda)
-        self.mapa_fazenda   = None
-        self.timer_plantas  = {}     # (col, lin): timestamp em ms
+        self.mapa_fazenda  = None
+        self.timer_plantas = {}   # (col, lin): timestamp em ms
 
-        # Estado dos prédios
         self.predios = {
             ESTABULO_QUEBRADO:   ESTABULO_QUEBRADO,
             GALINHEIRO_QUEBRADO: GALINHEIRO_QUEBRADO,
         }
 
-        # Animais (lista de dicionários)
-        self.animais = []
-
-        # Jogador (instância de Jogador)
-        self.jogador = None
-
-        # Flags e mensagens
+        self.animais            = []
+        self.jogador            = None
         self.msg_cansado        = False
         self.timer_msg_cansado  = 0
         self.dormiu_voluntario  = False
-
-        # Pesca
         self.tem_vara           = False
         self.ultimo_resultado   = None   # 'capturado' | 'escapou' | None
+        self.ultimo_mapa        = 'fazenda'
 
-        # Navegação entre mapas
-        self.ultimo_mapa        = 'fazenda'   # 'fazenda' | 'cidade'
-
-        # Carrega save automático (se existir)
         self.carregar()
 
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    # Sistema de save/load — save.json
+    # Sistema de save/load - save.json
     # Para resetar o jogo: delete o arquivo save.json na pasta do jogo
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
     def salvar(self):
-        """Salva o estado completo do jogo em save.json."""
         inv = self.inventario
         hor = self.horario
-
-        # Serializa o mapa (lista de listas de ints)
         mapa_serial = self.mapa_fazenda if self.mapa_fazenda is not None else None
-
-        # Serializa timer de plantas: chave str 'col,lin', valor timestamp
-        tp_serial = {
+        tp_serial   = {
             f'{c},{l}': t for (c, l), t in self.timer_plantas.items()
         }
-
         dados = {
-            # Inventário
-            'dinheiro':     inv.dinheiro,
-            'semente':      inv.semente,
-            'semente_esp':  inv.semente_esp,
-            'muda':         inv.muda,
-            'colheita':     inv.colheita,
-            'colheita_esp': inv.colheita_esp,
-            'madeira':      inv.madeira,
-            'peixe_comum':  inv.peixe_comum,
-            'peixe_dourado':inv.peixe_dourado,
-            'peixe_raro':   inv.peixe_raro,
-            'semente_ativa':inv.semente_ativa,
-            # Horario / dia
-            'dia':          hor.dia,
-            # Estado dos prédios
-            'predios':      self.predios,
-            # Animais
-            'animais':      self.animais,
-            # Pesca
-            'tem_vara':     self.tem_vara,
-            # Mapa e plantas
-            'mapa_fazenda': mapa_serial,
+            'dinheiro':      inv.dinheiro,
+            'semente':       inv.semente,
+            'semente_esp':   inv.semente_esp,
+            'muda':          inv.muda,
+            'colheita':      inv.colheita,
+            'colheita_esp':  inv.colheita_esp,
+            'madeira':       inv.madeira,
+            'peixe_comum':   inv.peixe_comum,
+            'peixe_dourado': inv.peixe_dourado,
+            'peixe_raro':    inv.peixe_raro,
+            'semente_ativa': inv.semente_ativa,
+            'dia':           hor.dia,
+            'predios':       self.predios,
+            'animais':       self.animais,
+            'tem_vara':      self.tem_vara,
+            'mapa_fazenda':  mapa_serial,
             'timer_plantas': tp_serial,
         }
         try:
@@ -370,7 +315,6 @@ class DadosJogo:
             pass
 
     def carregar(self):
-        """Carrega o save.json se existir. Nada é feito se não houver save."""
         if not os.path.isfile(CAMINHO_SAVE):
             return
         try:
@@ -396,7 +340,6 @@ class DadosJogo:
 
         if 'predios' in d:
             self.predios.update(d['predios'])
-
         if 'animais' in d:
             self.animais = list(d['animais'])
 

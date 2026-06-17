@@ -105,6 +105,9 @@ class EstadoCidade(EstadoBase):
 
         dados_jogo.ultimo_mapa = 'cidade'
 
+        # Inicia musica da cidade
+        RECURSOS.tocar_musica('musica_cidade', self.cfg.volumes)
+
     def _loja_na_frente(self):
         cx   = self.jog.x + 16
         topo = self.jog.y
@@ -127,7 +130,7 @@ class EstadoCidade(EstadoBase):
 
     def processar_eventos(self, eventos: list):
         if self.dialogo:
-            if not self.dialogo.processar_eventos(eventos, self.cfg.teclas):
+            if not self.dialogo.processar_eventos(eventos, self.cfg.teclas, self.cfg.volumes):
                 self.dialogo = None
                 self.carregamento['fase']   = 'sair'
                 self.carregamento['alfa']   = 255
@@ -140,16 +143,19 @@ class EstadoCidade(EstadoBase):
             k = ev.key
             t = self.cfg.teclas
             if k == pygame.K_ESCAPE:
+                RECURSOS.tocar_som('tecla', self.cfg.volumes)
                 if self.ver_inv:
                     self.ver_inv = False
                     continue
                 from src.settings_state import EstadoConfiguracoes
                 return EstadoConfiguracoes(self.gd, estado_anterior=self)
             if k == t.get('inventario', pygame.K_i):
+                RECURSOS.tocar_som('tecla', self.cfg.volumes)
                 self.ver_inv = not self.ver_inv
             elif k in (pygame.K_RETURN, pygame.K_KP_ENTER):
                 agora = pygame.time.get_ticks()
                 if self.loja_proxima is not None and agora > self.cooldown_loja:
+                    RECURSOS.tocar_som('tecla', self.cfg.volumes)
                     self._abrir_loja(self.loja_proxima)
         return self
 
