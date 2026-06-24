@@ -170,14 +170,14 @@ COR_PIER = (120, 80, 40)
 HORA_INICIO        = 8
 HORA_FIM           = 24
 MINUTOS_POR_TICK   = 10
-SEGUNDOS_POR_TICK  = 5
+SEGUNDOS_POR_TICK  = 3
 
 
 # Volume padrao (barra unica geral)
 
 VOLUMES_PADRAO = {
-    'geral': 0.7,
-    'musica': 0.5,
+    'geral': 0.4,
+    'musica': 0.3,
 }
 
 RESOLUCOES = [(800, 600), (1024, 768), (1280, 720)]
